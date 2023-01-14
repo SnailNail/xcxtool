@@ -132,16 +132,18 @@ def format_probes(probes_dict: Mapping[str, str]) -> str:
     return "\n".join(probes_dict.values())
 
 
-if __name__ == '__main__':
+def main():
     import PySimpleGUI as sg
     import pyperclip
+
     layout = [
         [sg.Text('Paste the output from Xenoprobes here '
                  '(make sure to include the "Probes configuration" line):')],
-        [sg.Multiline(key="input")],
+        [sg.Multiline(key="input", size=(80, 40))],
         [sg.Button('Copy'), sg.Button('Exit')],
     ]
     window = sg.Window("Xenoprobes output formatter", layout)
+
     while True:
         event, values = window.read()
         if event == sg.WINDOW_CLOSED or event == 'Exit':
@@ -160,3 +162,7 @@ if __name__ == '__main__':
             pyperclip.copy(text)
 
     window.close()
+
+
+if __name__ == '__main__':
+    main()
