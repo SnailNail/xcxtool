@@ -23,6 +23,9 @@ Output structure:
 import io
 from typing import Tuple, Mapping
 
+import PySimpleGUI as sg
+import pyperclip
+
 PROBE_SITES = {
     # Primordia
     "FN 101": "None", "FN 102": "None", "FN 103": "None", "FN 104": "None", "FN 105": "None",
@@ -88,6 +91,8 @@ TEMPLATE = """\
 {probes}
 """
 
+CONTEXT_MENU_ITEMS = ['', ["Cut", "Copy", "Paste", "---", "Select all"]]
+
 
 def process_input(xprobes_output: str):
     """Iterate the lines of xprobes_output, processing each according to its content"""
@@ -132,23 +137,48 @@ def format_probes(probes_dict: Mapping[str, str]) -> str:
     return "\n".join(probes_dict.values())
 
 
-def main():
-    import PySimpleGUI as sg
-    import pyperclip
+def handle_context_menu(event: str, window: sg.Window, element: sg.Multiline):
+    """Process context menu entries on the big text box
 
+    ``element`` will be one of {"Select all", "Cut", "Copy"}
+    """
+    if event == "Select all":
+        element.Widget.selection_clear()
+        element.Widget.tag_add("sel", 1.0, "end")
+    if event in {"Cut", "Copy"}:
+        try:
+            text = element.Widget.selection_get()
+        except sg.tk.TclError:
+            status: sg.Text = window["status"]
+            status.update("Nothing selected")
+        else:
+            window.TKroot.clipboard_clear()
+            window.TKroot.clipboard_append(text)
+            if element =="Cut":
+                element.Widget.delete(sg.tk.SEL_FIRST, sg.tk.SEL_LAST)
+            element.Widget.selection_clear()
+    if event == "Paste":
+        element.Widget.insert(sg.tk.INSERT, window.TKroot.clipboard_get())
+
+
+def main():
     layout = [
         [sg.Text('Paste the output from Xenoprobes here '
                  '(make sure to include the "Probes configuration" line):')],
-        [sg.Multiline(key="input", size=(80, 40))],
-        [sg.Button('Copy'), sg.Button('Exit')],
+        [sg.Multiline(key="input", size=(80, 40), right_click_menu=CONTEXT_MENU_ITEMS)],
+        [sg.Button("Process and copy", key="process"), sg.Button("Exit"), sg.Text(key="status", justification="right")],
     ]
     window = sg.Window("Xenoprobes output formatter", layout)
+    ml_input: sg.Multiline = window["input"]
+    status_text:sg.Text = window["status"]
 
     while True:
         event, values = window.read()
         if event == sg.WINDOW_CLOSED or event == 'Exit':
             break
-        if event == "Copy":
+        if event in CONTEXT_MENU_ITEMS[1]:
+            handle_context_menu(event, window, ml_input)
+        if event == "process":
             data = process_input(values["input"])
             # pprint.pprint(data)
             text = TEMPLATE.format(
@@ -160,6 +190,7 @@ def main():
                 probes=format_probes(data["resources"])
             )
             pyperclip.copy(text)
+            status_text.update("Formatted output copied to clipboard")
 
     window.close()
 
