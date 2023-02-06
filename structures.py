@@ -16,14 +16,31 @@ class StructureBase:
     def from_bytes(cls, buffer: bytes):
         """Alternative constructor for creating from bytes.
 
-        buffer must be exactly cls._struct.size bytes"""
+        buffer must be exactly cls._struct.size bytes
+
+        If any field is itself a StructureBase subclass, it should be defined
+        in cls._struct as a 's' type of the size of the packed structure. The
+        field's value will be converted to a StructureBase instance by the
+        __post_init__() method
+        """
         if len(buffer) != cls._struct.size:
             raise ValueError(f"buffer must be {cls._struct.size} bytes")
+        # noinspection PyArgumentList
         return cls(
             *cls._struct.unpack(buffer)
         )
 
+    def __post_init__(self):
+        for f in fields(self):
+            value = getattr(self, f.name)
+            if issubclass(f.type, StructureBase) and isinstance(value, bytes):
+                setattr(self, f.name, f.type.from_bytes(value))
+
     def __bytes__(self):
+        for field in fields(self):
+            if issubclass(field.type, StructureBase):
+                setattr(self, field.name, bytes(getattr(self, field.name)))
+
         return self._struct.pack(*astuple(self))
 
     def __len__(self):
