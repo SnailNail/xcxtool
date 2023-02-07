@@ -12,11 +12,10 @@ can be set in the real environment, or in a .env file
   * XCX_CEMU_USERID should be set to the ID of the user whose save should
     be copied. If there is only one user, this will usually be "80000001"
 """
+import configparser
 import os
 import pathlib
-import sys
 
-import dotenv
 import PySimpleGUI as sg
 
 
@@ -33,25 +32,25 @@ CONFIG_DEFAULTS = {
 
 
 def main():
-    dotenv.load_dotenv()
-    cemu_save_path, cemu_user_id = _check_env()
+    config = _load_config()
 
-    save_path = pathlib.Path(cemu_save_path) / pathlib.Path(cemu_user_id)
-    sg.popup("Saves will be copied from", f"{save_path}", f"to: {os.getcwd()}")
+    save_path = pathlib.Path(config["cemu"]["save_path"]) / pathlib.Path(config["cemu"]["user_id"])
+    backup_path = pathlib.Path(config["backups"]["path"])
+    sg.popup("Saves will be copied from", f"{save_path}", f"to: {backup_path.resolve()}")
 
 
-def _check_env() -> tuple[str, str]:
-    env_hint = f"Environment variables can be configured in a .env file in {os.getcwd()}"
-    save_path = os.getenv("XCX_CEMU_SAVE_PATH")
-    user = os.getenv("XCX_CEMU_USER_ID")
-    if save_path is None:
-        sg.popup_error("The CEMU_SAVE_PATH environment variable must be set", env_hint)
-        sys.exit(1)
+def _load_config(config_file: str = "saves.ini", config_path: str = None) -> configparser.ConfigParser:
+    """Load config from the current working directory, or config_path if provided"""
+    if config_path is None:
+        config_path = os.getcwd()
+    config_path = os.path.join(config_path, config_file)
 
-    if user is None:
-        sg.popup("The XCX_CEMU_USER_ID environment is not set, assuming '80000001'", env_hint)
-        user = "80000001"
-    return save_path, user
+    parser = configparser.ConfigParser()
+    parser.read_dict(CONFIG_DEFAULTS, "<defaults>")
+    if os.path.exists(config_path):
+        with open(config_path) as f:
+            parser.read_file(f)
+    return parser
 
 
 if __name__ == '__main__':
