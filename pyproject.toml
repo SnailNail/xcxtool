@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xcxtools"
+description = "Command line helpers for Xenoblade Chronicles X on Cemu"
+requires-python = ">=3.10"
+dependencies = [
+    "plumbum >= 1.8.1",
+    "rich >= 13.3.1",
+    "Pymem >= 1.10.0",
+]
+dynamic = ["version"]
+
+[project.scripts]
+xcxtool = "xcxtools.app:XCXToolsCLI.run"
+
+[tool.setuptools]
+packages = ["xcxtools"]
+
+[tool.setuptools.dynamic]
+version = {attr = "xcxtools.VERSION"}
