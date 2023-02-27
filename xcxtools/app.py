@@ -7,6 +7,7 @@ import plumbum
 
 from . import VERSION
 from . import config
+from .backup_save import BackupSave
 
 
 class XCXToolsCLI(cli.Application):
@@ -50,3 +51,6 @@ class XCXToolsCLI(cli.Application):
         cemu = pymem.Pymem(proc_name)
         print(f"Found Cemu at {cemu.base_address:#018x}")
         return cemu
+
+
+XCXToolsCLI.subcommand("backup", BackupSave)
