@@ -296,7 +296,7 @@ skill_levels_offsets = {
     'Lifeline': Offset(offset=1184, size=1, struct='B'),
     'Mindscape': Offset(offset=1185, size=1, struct='B'),
     'Hellhound': Offset(offset=1186, size=1, struct='B'),
-    'Killshot': Offset(offset=7102382325, size=1, struct='B'),
+    'Killshot': Offset(offset=1187, size=1, struct='B'),
     'Electric Guard': Offset(offset=1188, size=1, struct='B'),
     'Electric Boost': Offset(offset=1189, size=1, struct='B'),
     "Knock 'n' Shock": Offset(offset=1190, size=1, struct='B'),
