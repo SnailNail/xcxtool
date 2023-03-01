@@ -23,8 +23,7 @@ class XCXToolsCLI(cli.Application):
     )
     cemu_process_name: str = cli.SwitchAttr(
         "--cemu-process-name",
-        help="Name of the Cemu process to read data from",
-        default="cemu.exe",
+        help="Name of the Cemu process to read data from; the default is cemu.exe",
     )
 
     def __init__(self, executable):
@@ -34,23 +33,24 @@ class XCXToolsCLI(cli.Application):
     def main(self):
         print("Running XCXToolCLI.main()")
         config.load_config(self.config_path)
-        try:
-            self.cemu = self.find_cemu()
-        except pymem.exception.ProcessNotFound:
-            # Checking errors outside the call so we can exit on error
-            print("Could not find cemu process, exiting", file=sys.stderr)
-            return 1
+        self.find_cemu()
 
-    def find_cemu(self) -> pymem.Pymem:
-        """Find the cemu process and return a Pymem instance"""
+    def find_cemu(self) -> None:
+        """Find the cemu process, warn if not found"""
         proc_name = (
             self.cemu_process_name
             if self.cemu_process_name is not None
             else config.config["cemu"]["process_name"]
         )
-        cemu = pymem.Pymem(proc_name)
-        print(f"Found Cemu at {cemu.base_address:#018x}")
-        return cemu
+        try:
+            self.cemu = pymem.Pymem(proc_name)
+        except pymem.exception.ProcessNotFound:
+            print(
+                f"Could not find {proc_name} process, dynamic file names not available",
+                file=sys.stderr,
+            )
+        else:
+            print(f"Found Cemu at {self.cemu.base_address:#018x}")
 
 
 XCXToolsCLI.subcommand("backup", BackupSave)
