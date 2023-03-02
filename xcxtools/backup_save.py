@@ -1,38 +1,52 @@
 """Backup Cemu save file"""
+import shutil
+
 import plumbum
 from plumbum import cli
 
-from .config import CONFIG_DEFAULTS, config
+from .config import config
+
+
+_archive_formats = (f[0] for f in shutil.get_archive_formats())
 
 
 class BackupSave(cli.Application):
-    backup_dir: cli.ExistingDirectory = cli.SwitchAttr(
+    """Copy/backups Cemu save files.
+
+    See xcxtool --help for global options
+    """
+
+    backup_dir: plumbum.LocalPath = cli.SwitchAttr(
         ["-d", "--backup-dir"],
-        help=f"Backups will be saved to this directory; default is '{CONFIG_DEFAULTS['backup']['path']}'",
+        argtype=cli.ExistingDirectory,
+        help=f"Backups will be saved to this directory; default is '{config['backup']['path']}'",
     )
     backup_name: str = cli.SwitchAttr(
         ["-f", "--file"],
-        help=f"Name for the backup file; default is '{CONFIG_DEFAULTS['backup']['file_name']}'",
+        help=f"Name for the backup file (without extension); default is '{config['backup']['file_name']}'",
     )
-    save_dir: cli.ExistingDirectory = cli.SwitchAttr(
+    save_dir: plumbum.LocalPath = cli.SwitchAttr(
         ["-s", "--save-dir"],
-        help="XCX save directory. Can be found by selecting 'Save directory' from the "
-             "game's context menu in Cemu's game list",
+        argtype=cli.ExistingDirectory,
+        help="Directory containing XCX save files in the st/game subdirectory",
     )
-    user_id: str = cli.SwitchAttr(
-        ["-u", "--user-id"],
-        help=f"Cemu/WiiU user account ID; default is '{CONFIG_DEFAULTS['cemu']['user_id']}'",
+    archive_format: str = cli.SwitchAttr(
+        ["-a", "--archive-format"],
+        argtype=cli.Set(*_archive_formats),
+        help=f"Archive format for the backup; default is '{config['backup']['archive_format']}'",
     )
 
     def main(self):
-        save_path = config["cemu"]["save_path"]
-        user_id = config["cemu"]["user_id"]
+        save_dir = self.save_dir if self.save_dir else config["cemu"]["save_path"]
+        backup_dir = self.backup_dir if self.backup_dir else config["backup"]["path"]
 
-        save_path = plumbum.local.path(save_path, "user", user_id)
-        if save_path.exists():
-            print(f"Copying save from {save_path}")
+        save_dir = plumbum.local.path(save_dir)
+        backup_dir = plumbum.local.path(backup_dir)
+        if save_dir.exists():
+            print(f"Copying save from {save_dir}")
         else:
-            print(f"Save path does not exist: {save_path}")
+            print(f"Save path does not exist: {save_dir}")
+        print(f"to: {backup_dir}")
 
     @cli.switch(["--help-names"])
     def help_names(self):

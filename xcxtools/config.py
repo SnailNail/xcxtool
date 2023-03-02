@@ -13,13 +13,13 @@ from plumbum import LocalPath
 
 CONFIG_DEFAULTS = {
     "cemu": {
-        "save_path": r"c:\cemu\mlc01\usr\save\00050000\101c4c00",
-        "user_id": "80000001",
+        "save_path": r"C:\cemu\mlc01\usr\save\00050000\101c4d00\user\80000001",
         "process_name": "cemu.exe"
     },
     "backup": {
         "path": r".\saves",
-        "file_name": "",
+        "file_name": "backup-{datetime}",
+        "archive_format": "zip",
     },
     "sightseeing_spots": {
         # Primordia
