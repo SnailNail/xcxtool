@@ -7,7 +7,7 @@ command line, default values are used.
 """
 
 import configparser
-import os
+from typing import Any
 
 from plumbum import LocalPath
 
@@ -64,8 +64,8 @@ CONFIG_DEFAULTS = {
     },
 }
 
-config = configparser.ConfigParser()
-config.read_dict(CONFIG_DEFAULTS)
+_config = configparser.ConfigParser()
+_config.read_dict(CONFIG_DEFAULTS)
 
 
 def load_config(config_path: LocalPath):
@@ -74,4 +74,41 @@ def load_config(config_path: LocalPath):
     if not config_path.exists():
         print("Config file not found")
         return
-    config.read(config_path)
+    _config.read(config_path)
+
+
+def get(config_path: str, default: Any = None) -> Any:
+    """Get a config value
+
+    ``config_path`` should be string of the form ``"section.key"``
+
+    if the ``config_path`` is not found, return ``default``
+    """
+    section, _, key = config_path.partition(".")
+    if key == "":
+        raise ValueError(f"no config key specified (got {config_path})")
+
+    try:
+        return _config[section][key]
+    except KeyError:
+        return default
+
+
+def get_preferred(preferred: Any, fallback_config_path: str, sentinel: Any = None) -> Any:
+    """Return preferred value.
+
+    If ``preferred`` is the ``sentinel`` value, return the value of
+    ``fallback_config_path``.
+
+    ``fallback_config_path`` should be a string of the form ``"section.key"``
+
+    Note prefferd is compared to sentinel by identity, i.e. :
+
+    >>> if preferred is sentinel:
+    >>>     ...
+
+    not by value.
+    """
+    if preferred is sentinel:
+        return get(fallback_config_path)
+    return preferred

@@ -37,11 +37,8 @@ class XCXToolsCLI(cli.Application):
 
     def find_cemu(self) -> None:
         """Find the cemu process, warn if not found"""
-        proc_name = (
-            self.cemu_process_name
-            if self.cemu_process_name is not None
-            else config.config["cemu"]["process_name"]
-        )
+        proc_name = config.get_preferred(self.cemu_process_name, "cemu.process_name")
+
         try:
             self.cemu = pymem.Pymem(proc_name)
         except pymem.exception.ProcessNotFound:
