@@ -102,7 +102,7 @@ def get_preferred(preferred: Any, fallback_config_path: str, sentinel: Any = Non
 
     ``fallback_config_path`` should be a string of the form ``"section.key"``
 
-    Note prefferd is compared to sentinel by identity, i.e. :
+    Note ``preferred`` is compared to ``sentinel`` by identity, i.e. :
 
     >>> if preferred is sentinel:
     >>>     ...
