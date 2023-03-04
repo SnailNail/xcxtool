@@ -7,7 +7,7 @@ import plumbum
 
 from . import VERSION
 from . import config
-from .backup_save import BackupSave
+from xcxtools.backup import BackupSave
 
 
 class XCXToolsCLI(cli.Application):
