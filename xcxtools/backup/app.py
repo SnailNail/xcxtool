@@ -1,5 +1,6 @@
 """Backup Cemu save file"""
 import shutil
+from typing import Any
 
 import plumbum
 from plumbum import local, cli
@@ -17,14 +18,19 @@ class BackupSave(cli.Application):
     """
 
     backup_dir: plumbum.LocalPath = cli.SwitchAttr(
-        ["-d", "--backup-dir"],
-        argtype=cli.ExistingDirectory,
+        ["-b", "--backup-dir"],
+        argtype=plumbum.LocalPath,
         help=f"Backups will be saved to this directory; default is '{config.get('backup.path')}'",
+    )
+    create_backup_dir: bool = cli.Flag(
+        ["-c", "--create"],
+        help="Try to create backup-dir if it doesn't exist",
     )
     backup_name: str = cli.SwitchAttr(
         ["-f", "--file"],
         help=f"Name for the backup file (without extension); default is '{config.get('backup.file_name')}'",
     )
+    help_tokens: bool = cli.Flag("--help-tokens", help="Show available replacement tokens")
     save_dir: plumbum.LocalPath = cli.SwitchAttr(
         ["-s", "--save-dir"],
         argtype=cli.ExistingDirectory,
@@ -35,35 +41,45 @@ class BackupSave(cli.Application):
         argtype=cli.Set(*_archive_formats),
         help=f"Archive format for the backup; default is '{config.get('backup.archive_format')}'",
     )
+    dry_run: bool = cli.Flag(["--dry-run"], help="Do not create the archive, just print its name")
 
     def __init__(self, executable):
         super().__init__(executable)
-        self._help_names_run = False
 
     def main(self):
+        if self.help_tokens:
+            self._help_names()
+            return
         if result := self.pre_flight_checks() is not None:
             return result
+        if self.backup_name is None:
+            self.backup_name = config.get("backup.file_name")
         print("running BackupSave.main()")
+        print(f"Copying save files from {self.save_dir}")
+        print(f"to: {self.backup_dir / self.backup_name}")
 
     def pre_flight_checks(self) -> int | None:
         """Various checks before running main() proper"""
-        if self._help_names_run:
-            return 0
-        if not any((self._check_parent(), self._check_paths())):
+        if not any((self._check_parent(), self._check_save_path(), self._check_backup_path())):
             return 2
         return
 
-    def _check_paths(self) -> bool:
-        self.save_dir = local.path(config.get_preferred(self.save_dir, "cemu.save_path"))
-        self.backup_dir = local.path(config.get_preferred(self.backup_dir, "backup.path"))
+    def _check_save_path(self) -> bool:
+        if self.save_dir is None:
+            self.save_dir = local.path(config.get("cemu.save_path"))
         if not (self.save_dir / "st").exists():
             print(f"Cemu save directory not found: {self.save_dir / 'st'}")
             return False
-        if not self.backup_dir.exists():
-            print(f"Backup directory not found: {self.backup_dir}")
-            return False
-        print(f"Copying save files from {self.save_dir}\nto {self.backup_dir}")
         return True
+
+    def _check_backup_path(self) -> bool:
+        if self.backup_dir is None:
+            self.backup_dir = local.path(config.get("backup.path"))
+        if self.backup_dir.exists():
+            return True
+        if self.create_backup_dir:
+            return self.backup_dir.mkdir()
+        return False
 
     def _check_parent(self) -> bool:
         if self.parent:
@@ -71,8 +87,7 @@ class BackupSave(cli.Application):
         print("This utility must be run via the main xcxtools application")
         return False
 
-    @cli.switch(["--help-names"])
-    def help_names(self):
+    def _help_names(self):
         """Print available replacement tokens for --backup-path and --file"""
         preamble = ("The --backup-dir and --file arguments can contain replacement fields "
                     "e.g, 'fixed_{player_name}_also_fixed'. The available fields are "
