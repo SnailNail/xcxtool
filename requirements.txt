@@ -3,3 +3,4 @@ setuptools>=65.6.3
 Pymem~=1.10.0
 PySimpleGUI~=4.60.4
 pyperclip~=1.8.2
+pendulum~=2.1.2

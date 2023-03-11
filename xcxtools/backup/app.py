@@ -5,7 +5,8 @@ from typing import Any
 import plumbum
 from plumbum import local, cli
 
-from .. import config
+from .. import config, memory_reader
+from . import tokens, formatter
 
 
 _archive_formats = (f[0] for f in shutil.get_archive_formats())
@@ -43,9 +44,6 @@ class BackupSave(cli.Application):
     )
     dry_run: bool = cli.Flag(["--dry-run"], help="Do not create the archive, just print its name")
 
-    def __init__(self, executable):
-        super().__init__(executable)
-
     def main(self):
         if self.help_tokens:
             self._help_names()
@@ -54,9 +52,31 @@ class BackupSave(cli.Application):
             return result
         if self.backup_name is None:
             self.backup_name = config.get("backup.file_name")
-        print("running BackupSave.main()")
-        print(f"Copying save files from {self.save_dir}")
-        print(f"to: {self.backup_dir / self.backup_name}")
+
+        field_values = {}
+        field_values.update(tokens.get_datetime())
+
+        gamedata = self.save_dir.join("st", "game", "gamedata")
+        if gamedata.exists():
+            field_values.update(tokens.get_mtime(gamedata))
+        else:
+            print("No save file found! Save file mtime not available")
+
+        cemu = memory_reader.connect_cemu(
+            config.get_preferred(self.parent.cemu_process_name, "cemu.process_name")
+        )
+        if cemu is not None:
+            field_values.update(tokens.get_character_data(cemu))
+            field_values.update(tokens.get_playtime(cemu))
+            cemu.close()
+        else:
+            print("Cemu process not found, game data not available")
+
+        archive_name = formatter.ForgivingFormatter().vformat(self.backup_name, (), field_values)
+        print(f"Backing up from: {self.save_dir}")
+        print(f"to: {self.backup_dir / archive_name}")
+        _format = config.get_preferred(self.archive_format, "backup.archive_format")
+        print(f"With format {dict(shutil.get_archive_formats())[_format]}")
 
     def pre_flight_checks(self) -> int | None:
         """Various checks before running main() proper"""
@@ -110,7 +130,7 @@ class BackupSave(cli.Application):
             "{play_time}": "Total playtime as seen on the main menu. "
                            "The main menu must be open for this to be accurate; "
                            "if the menu is not open the last displayed values will be used "
-                           "(pendulum.duration)",
+                           "(str)",
             "{save_date}": "Last modified date/time of the gamedata save file (pendulum.datetime)",
             "{date}": "Current (calendar) date/time (pendulum.datetime)",
         }
