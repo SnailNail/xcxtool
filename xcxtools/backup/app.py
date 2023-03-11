@@ -4,7 +4,7 @@ import shutil
 import plumbum
 from plumbum import local, cli
 
-from xcxtools import config
+from .. import config
 
 
 _archive_formats = (f[0] for f in shutil.get_archive_formats())
