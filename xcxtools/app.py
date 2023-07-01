@@ -8,12 +8,14 @@ import plumbum
 from . import VERSION
 from . import config
 from .backup import BackupSave
+from .savefiles import DecryptSave
 
 
 class XCXToolsCLI(cli.Application):
     PROGNAME = "xcxtools"
     DESCRIPTION = "Utilities for playing Xenoblade Chronicles X on Cemu"
     VERSION = VERSION
+    CALL_MAIN_IF_NESTED_COMMAND = False
 
     config_path: plumbum.LocalPath = cli.SwitchAttr(
         "--config-path",
@@ -32,3 +34,4 @@ class XCXToolsCLI(cli.Application):
 
 
 XCXToolsCLI.subcommand("backup", BackupSave)
+XCXToolsCLI.subcommand("decrypt", DecryptSave)
