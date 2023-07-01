@@ -35,12 +35,12 @@ class DecryptSave(cli.Application):
     def main(self, savefile: plumbum.LocalPath):
         print(f"Decrypting {savefile}")
         data = savefile.read(None, "rb")
-        key = guess_key(data)
-        if key is None:
+        try:
+            decrypted, key = decrypt_savedata(data)
+        except ValueError:
             print(f"could not determine encryption key")
             return 1
-        decrypted = decrypt_savedata(data, key)
-        print(f"Found key: {decrypted[0:32].hex()}...")
+        print(f"Found key: {key[0:32].hex()}...")
         of_name = savefile.name + "_decrypted"
         of: plumbum.LocalPath = savefile.parent / of_name
 
@@ -68,7 +68,7 @@ def guess_key(savedata: bytes) -> bytes | None:
     return
 
 
-def decrypt_savedata(data: bytes, use_key: bytes | None = None) -> bytes:
+def decrypt_savedata(data: bytes, use_key: bytes | None = None) -> tuple[bytes, bytes]:
     decrypted = b""
     if use_key is None:
         key = guess_key(data)
@@ -78,7 +78,7 @@ def decrypt_savedata(data: bytes, use_key: bytes | None = None) -> bytes:
         raise ValueError("Could not determine key")
     for offset in range(0, len(data), 512):
         decrypted += _decrypt(data[offset: offset + 512], key)
-    return decrypted
+    return decrypted, key
 
 
 def _decrypt(cipher: bytes, key: bytes):
