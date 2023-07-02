@@ -14,9 +14,10 @@ type of save files generated at different times.
 [1]: https://github.com/sharkdp/binocle
 """
 import collections
+import os
 
 import plumbum
-from plumbum import cli, local
+from plumbum import cli
 
 SAVEDATA_PLAYER_OFFSET = -0x58
 SAVEDATA_SIZE = 359984
@@ -46,12 +47,14 @@ class DecryptSave(cli.Application):
 
         print(f"Writing decrypted data to {of}")
         of.write(decrypted, None, "wb")
+        copy_mtime(savefile, of)
 
         if self.dump_key:
             of_key_name = savefile.name + "_key"
             of_key = savefile.parent / of_key_name
             print(f"Writing key to {of_key}")
             of_key.write(key, None, "wb")
+            copy_mtime(savefile, of_key)
 
 
 def guess_key(savedata: bytes) -> bytes | None:
@@ -83,3 +86,10 @@ def decrypt_savedata(data: bytes, use_key: bytes | None = None) -> tuple[bytes, 
 
 def _decrypt(cipher: bytes, key: bytes):
     return bytes(a ^ b for a, b in zip(cipher, key))
+
+
+def copy_mtime(src: plumbum.LocalPath, dest: plumbum.LocalPath) -> None:
+    """Copy the modified date from src to dest."""
+    src_stat = src.stat()
+    dest_stat = dest.stat()
+    os.utime(dest, (dest_stat.st_atime, src_stat.st_mtime))
