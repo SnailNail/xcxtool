@@ -3,6 +3,29 @@
 Uses saves from the very start of the game, immediately after gaining control,
 where most time-related functions are disabled (time of day is fixed to night,
 weather is fixed to thunderstorms, no FrontierNav ticking away).
+
+There are two addresses that are consistently updated:
+  * 0x045d60 (8 bytes) appears to be a timestamp of some kind, related to when
+    the game was saved
+  * 0x045e40 (4 bytes) appears to correlate with the game timer
+
+Both values increment by something slightly less than a second
+
+One of the XCX provides a function for setting the time. It's never worked
+for me, but it provides an interesting mapping of game times to some kind o tick:
+    >>> ct_times = {
+    ... "midnight": 0,
+    ... "3:00 am": 12000,
+    ... "6:00 am": 24000,
+    ... "9:00 am": 36900,
+    ... "12:00 pm": 49000,
+    ... "3:00 pm": 61400,
+    ... "6:00 pm": 73700,
+    ... "9:00 pm": 86000,
+    ... }
+
+I'm not sure where in the code this is used, but it does imply some non-linear
+mapping between game ticks and time units.
 """
 import pathlib
 from dataclasses import dataclass
@@ -19,6 +42,7 @@ timer_saves = pathlib.Path(env["TIMER_SAVE_DATA"])
 
 @dataclass
 class TimerData:
+    name: str
     value_1: int
     value_2: int
     mtime: pendulum.DateTime
@@ -48,7 +72,7 @@ def get_timer_data(save_file: pathlib.Path) -> TimerData:
     value1 = int.from_bytes(data[0x45d60:0x45d68], "big")
     value2 = int.from_bytes(data[0x45e40:0x45e44], "big")
     mtime = pendulum.from_timestamp(save_file.stat().st_mtime, tz="local")
-    return TimerData(value1, value2, mtime)
+    return TimerData(save_file.name, value1, value2, mtime)
 
 
 def diffs_for_glob(glob: str) -> list[TimerDiff]:
