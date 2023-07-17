@@ -34,6 +34,8 @@ import re
 import dotenv
 import pendulum
 
+from xcxtools import savefiles
+
 env = dotenv.dotenv_values()
 timer_saves = pathlib.Path(env["TIMER_SAVE_DATA"])
 TIMER_FILENAME_RE = re.compile(r"\w+_(?P<hr>\d)+-(?P<min>\d\d)-(?P<sec>\d\d)_")
@@ -68,6 +70,8 @@ class TimerDiff:
 
 def get_timer_data(save_file: pathlib.Path) -> TimerData:
     data = save_file.read_bytes()
+    if data[0x10:0x14] != b"\x00\x03Wr":
+        data, _ = savefiles.decrypt_savedata(data)
     value1 = int.from_bytes(data[0x45d60:0x45d68], "big")
     value2 = int.from_bytes(data[0x45e40:0x45e44], "big")
     mtime = pendulum.from_timestamp(save_file.stat().st_mtime, tz="local")
