@@ -112,3 +112,12 @@ def diffs_for_glob(glob: str) -> list[TimerDiff]:
         out_list.append(prev - timer)
         prev = timer
     return out_list
+
+
+def gamedata_value_to_duration(timer_value: int, as_tuple=False) -> pendulum.Duration | tuple[int, int, int]:
+    """Convert the value stored at 0x45e40 in the gamedata save file."""
+    hours, min_sec = divmod(timer_value, 4096)
+    minutes, seconds = divmod(min_sec, 64)
+    if as_tuple:
+        return hours, minutes, seconds
+    return pendulum.duration(hours=hours, minutes=minutes, seconds=seconds)
