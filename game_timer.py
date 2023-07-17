@@ -29,15 +29,14 @@ mapping between game ticks and time units.
 """
 import pathlib
 from dataclasses import dataclass
+import re
 
 import dotenv
 import pendulum
 
-from xcxtools import savefiles
-
 env = dotenv.dotenv_values()
-
 timer_saves = pathlib.Path(env["TIMER_SAVE_DATA"])
+TIMER_FILENAME_RE = re.compile(r"\w+_(?P<hr>\d)+-(?P<min>\d\d)-(?P<sec>\d\d)_")
 
 
 @dataclass
@@ -73,6 +72,28 @@ def get_timer_data(save_file: pathlib.Path) -> TimerData:
     value2 = int.from_bytes(data[0x45e40:0x45e44], "big")
     mtime = pendulum.from_timestamp(save_file.stat().st_mtime, tz="local")
     return TimerData(save_file.name, value1, value2, mtime)
+
+
+def diff_timerdata(timers: list[TimerData]) -> list[tuple[str, float, TimerDiff]]:
+    diffs = []
+    prev = None
+    for timer in sorted(timers, key=lambda t: t.mtime):
+        if prev is None:
+            prev = timer
+            continue
+        caption = f"{prev.name[13:]} to {timer.name[13:]}"
+        game_time = (parse_timer_filename(timer.name) - parse_timer_filename(prev.name)).total_seconds()
+        diffs.append((caption, game_time, timer - prev))
+        prev = timer
+    return diffs
+
+
+def parse_timer_filename(file_name: str) -> pendulum.Duration | None:
+    mo = TIMER_FILENAME_RE.match(file_name)
+    if mo is None:
+        return
+    h, m, s = (int(i) for i in mo.groups())
+    return pendulum.duration(hours=h, minutes=m, seconds=s)
 
 
 def diffs_for_glob(glob: str) -> list[TimerDiff]:
