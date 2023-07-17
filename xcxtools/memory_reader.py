@@ -3,10 +3,13 @@
 Initial implementation uses Pymem to access Cemu's memory. It may be possible
 to use TCP Gecko to read the game running on a real WiiU in the future.
 """
+import os
 import sys
 import typing
 
 import pymem
+
+from xcxtools import savefiles
 
 
 class MemoryReader(typing.Protocol):
@@ -29,6 +32,20 @@ class PymemReader:
 
     def close(self):
         self.pymem.close_process()
+
+
+class SaveFileReader:
+    """Read data from a XCX save file (gamedata)"""
+    def __init__(self, save_file: str | os.PathLike):
+        with open(save_file, "wb") as f:
+            data = f.read()
+        self.data, _ = savefiles.decrypt_savedata(data)
+        self.player_addr = 0x58
+
+    def read_memory(self, offset: int, length: int) -> bytes:
+        start = offset + self.player_addr
+        end = start + length
+        return self.data[start:end]
 
 
 def connect_cemu(process_name: str = "cemu.exe") -> PymemReader | None:
