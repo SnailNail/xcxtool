@@ -9,23 +9,17 @@ There are two addresses that are consistently updated:
     the game was saved
   * 0x045e40 (4 bytes) appears to correlate with the game timer
 
-Both values increment by something slightly less than a second
+Both values increment by something slightly less than a second.
 
-One of the XCX provides a function for setting the time. It's never worked
-for me, but it provides an interesting mapping of game times to some kind o tick:
-    >>> ct_times = {
-    ... "midnight": 0,
-    ... "3:00 am": 12000,
-    ... "6:00 am": 24000,
-    ... "9:00 am": 36900,
-    ... "12:00 pm": 49000,
-    ... "3:00 pm": 61400,
-    ... "6:00 pm": 73700,
-    ... "9:00 pm": 86000,
-    ... }
+As it turns out, the value at 0x045e40 stores the game timer. It looks like a
+standard 4-byte integer, but like so many things in this game is actually
+multiple values packed into one using non-standard bit sizes. The lowest six
+bits store the number of seconds, the next six bits store the minutes, and the
+remaining bits store the number of hours.
 
-I'm not sure where in the code this is used, but it does imply some non-linear
-mapping between game ticks and time units.
+The individual values can be extracted either with bitwise operations, or
+as below, using integer division and remainders. In cPython, both methods
+are about as fast as each other.
 """
 import pathlib
 from dataclasses import dataclass
@@ -115,7 +109,17 @@ def diffs_for_glob(glob: str) -> list[TimerDiff]:
 
 
 def gamedata_value_to_duration(timer_value: int, as_tuple=False) -> pendulum.Duration | tuple[int, int, int]:
-    """Convert the value stored at 0x45e40 in the gamedata save file."""
+    """Convert the value stored at 0x45e40 in the gamedata save file.
+
+    The value looks like a standard 4-byte integer, but like so many things in
+    this game is actually multiple values packed into one. The lowest six bits
+    store the number of seconds, the next six bits store the minutes, and the
+    remaining bits store the number of hours.
+
+    The individual values can be extracted either with bitwise operations, or
+    as here, using integer division and remainders. In cPython, both methods
+    are about as fast as each other.
+    """
     hours, min_sec = divmod(timer_value, 4096)
     minutes, seconds = divmod(min_sec, 64)
     if as_tuple:
