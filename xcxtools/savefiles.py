@@ -32,16 +32,27 @@ class DecryptSave(cli.Application):
     """Decrypt save data"""
     dump_key = cli.Flag(["-k", "--dump-key"], help="Dump decryption key")
 
+    def __init__(self, executable):
+        super().__init__(executable)
+        self.key_data = None
+
     @cli.positional(cli.ExistingFile)
     def main(self, savefile: plumbum.LocalPath):
         print(f"Decrypting {savefile}")
         data = savefile.read(None, "rb")
-        try:
-            decrypted, key = decrypt_savedata(data)
-        except ValueError:
-            print(f"could not determine encryption key")
-            return 1
-        print(f"Found key: {key[0:32].hex()}...")
+        if self.key_data is not None:
+            if len(self.key_data) != 512:
+                print("KEY_FILE must be exactly 512 bytes")
+                return 1
+            print(f"Using key {self.key_data[0:32].hex()}...")
+            decrypted, key = decrypt_savedata(data, self.key_data)
+        else:
+            try:
+                decrypted, key = decrypt_savedata(data)
+            except ValueError:
+                print(f"could not determine encryption key")
+                return 1
+            print(f"Found key: {key[0:32].hex()}...")
         of_name = savefile.name + "_decrypted"
         of: plumbum.LocalPath = savefile.parent / of_name
 
@@ -55,6 +66,11 @@ class DecryptSave(cli.Application):
             print(f"Writing key to {of_key}")
             of_key.write(key, None, "wb")
             copy_mtime(savefile, of_key)
+
+    @cli.switch(["-u", "--use-key"], cli.ExistingFile)
+    def use_key(self, key_file: plumbum.LocalPath):
+        """Use KEY_File to decode savedata. KEY_FILE must be exactly 512 bytes"""
+        self.key_data = key_file.read(None, "rb")
 
 
 def guess_key(savedata: bytes) -> bytes | None:
