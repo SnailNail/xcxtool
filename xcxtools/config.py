@@ -70,10 +70,10 @@ _config.read_dict(CONFIG_DEFAULTS)
 
 def load_config(config_path: LocalPath):
     """load configuration from file"""
-    print(f"Using config file: {config_path}")
     if not config_path.exists():
         print("Config file not found")
         return
+    print(f"Using config file: {config_path}")
     _config.read(config_path)
 
 

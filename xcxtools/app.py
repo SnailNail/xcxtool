@@ -12,10 +12,9 @@ from .savefiles import DecryptSave
 
 
 class XCXToolsCLI(cli.Application):
-    PROGNAME = "xcxtools"
+    PROGNAME = "xcxtool"
     DESCRIPTION = "Utilities for playing Xenoblade Chronicles X on Cemu"
     VERSION = VERSION
-    CALL_MAIN_IF_NESTED_COMMAND = False
 
     config_path: plumbum.LocalPath = cli.SwitchAttr(
         "--config-path",
@@ -29,7 +28,6 @@ class XCXToolsCLI(cli.Application):
     )
 
     def main(self):
-        print("Running XCXToolCLI.main()")
         config.load_config(self.config_path)
 
 
