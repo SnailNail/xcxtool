@@ -5,110 +5,63 @@ where most time-related functions are disabled (time of day is fixed to night,
 weather is fixed to thunderstorms, no FrontierNav ticking away).
 
 There are two addresses that are consistently updated:
-  * 0x045d60 (8 bytes) appears to be a timestamp of some kind, related to when
-    the game was saved
-  * 0x045e40 (4 bytes) appears to correlate with the game timer
+  * 0x045d64 (4 bytes) records the timestamp of the time the game was saved
+  * 0x045e40 (4 bytes) records the game timer
 
-Both values increment by something slightly less than a second.
+Both the timestamp and timer values are packed integer values. The timestamp
+is comprised of six bit for the year (since 2000), nine bits for the number of
+days into the year and the time of the save (hours, minutes and seconds in 5,
+6 and 6 bits respectively)
 
-As it turns out, the value at 0x045e40 stores the game timer. It looks like a
-standard 4-byte integer, but like so many things in this game is actually
-multiple values packed into one using non-standard bit sizes. The lowest six
-bits store the number of seconds, the next six bits store the minutes, and the
-remaining bits store the number of hours.
+The timer value records the time since the game starts in hours (30 bits),
+minutes (6 bits) and seconds (six) bits.
 
-The individual values can be extracted either with bitwise operations, or
-as below, using integer division and remainders. In cPython, both methods
-are about as fast as each other.
+The values can be unpacked using either integer division and modulo operations
+(as in the unpack_game_timer() function below) or using bitwise
+operations as in the unpack_save_timestamp() function), there is negligible
+performance difference between the two in CPython.
 """
-import pathlib
-from dataclasses import dataclass
-import re
+import typing
 
-import dotenv
 import pendulum
 
-from xcxtools import savefiles
 
-env = dotenv.dotenv_values()
-timer_saves = pathlib.Path(env["TIMER_SAVE_DATA"])
-TIMER_FILENAME_RE = re.compile(r"\w+_(?P<hr>\d)+-(?P<min>\d\d)-(?P<sec>\d\d)_")
+SAVE_TIMESTAMP_OFFSET = 0x45d64
+SAVE_TIMESTAMP_EPOCH = pendulum.datetime(2000, 1, 1)
+GAME_TIMER_OFFSET = 0x45e40
 
 
-@dataclass
-class TimerData:
-    name: str
-    value_1: int
-    value_2: int
-    mtime: pendulum.DateTime
+class GameTimer(typing.NamedTuple):
+    hours: int
+    minutes: int
+    seconds: int
 
-    def __sub__(self, other) -> "TimerDiff":
-        if not isinstance(other, TimerData):
-            return NotImplemented
-        return TimerDiff(
-            self.value_1 - other.value_1,
-            self.value_2 - other.value_2,
-            self.mtime - other.mtime
+    def as_duration(self) -> pendulum.Duration:
+        return pendulum.duration(
+            hours=self.hours,
+            minutes=self.minutes,
+            seconds=self.seconds,
         )
 
-    def __str__(self) -> str:
-        return f"0x45d60: {self.value_1:,d}, 0x45e40: {self.value_2:,d}, mtime: {self.mtime.to_datetime_string()}"
+
+class SavedTime(typing.NamedTuple):
+    year: int
+    days: int
+    hours: int
+    minutes: int
+    seconds: int
+
+    def as_datetime(self) -> pendulum.DateTime:
+        return SAVE_TIMESTAMP_EPOCH.add(
+            years=self.year,
+            days=self.days,
+            hours=self.hours,
+            minutes=self.minutes,
+            seconds=self.seconds,
+        )
 
 
-@dataclass
-class TimerDiff:
-    value_1: int
-    value_2: int
-    mtime: pendulum.Period
-
-
-def get_timer_data(save_file: pathlib.Path) -> TimerData:
-    data = save_file.read_bytes()
-    if data[0x10:0x14] != b"\x00\x03Wr":
-        data, _ = savefiles.decrypt_savedata(data)
-    value1 = int.from_bytes(data[0x45d60:0x45d68], "big")
-    value2 = int.from_bytes(data[0x45e40:0x45e44], "big")
-    mtime = pendulum.from_timestamp(save_file.stat().st_mtime, tz="local")
-    return TimerData(save_file.name, value1, value2, mtime)
-
-
-def diff_timerdata(timers: list[TimerData]) -> list[tuple[str, float, TimerDiff]]:
-    diffs = []
-    prev = None
-    for timer in sorted(timers, key=lambda t: t.mtime):
-        if prev is None:
-            prev = timer
-            continue
-        caption = f"{prev.name[13:]} to {timer.name[13:]}"
-        game_time = (parse_timer_filename(timer.name) - parse_timer_filename(prev.name)).total_seconds()
-        diffs.append((caption, game_time, timer - prev))
-        prev = timer
-    return diffs
-
-
-def parse_timer_filename(file_name: str) -> pendulum.Duration | None:
-    mo = TIMER_FILENAME_RE.match(file_name)
-    if mo is None:
-        return
-    h, m, s = (int(i) for i in mo.groups())
-    return pendulum.duration(hours=h, minutes=m, seconds=s)
-
-
-def diffs_for_glob(glob: str) -> list[TimerDiff]:
-    work_list = [get_timer_data(t) for t in timer_saves.glob(glob)]
-    work_list.sort(key=lambda t: t.mtime, reverse=True)
-    out_list = []
-    prev = None
-    for timer in work_list:
-        if prev is None:
-            prev = timer
-            continue
-        out_list.append(prev - timer)
-        prev = timer
-    return out_list
-
-
-def gamedata_value_to_duration(timer_value: int, as_tuple=False) -> pendulum.Duration | tuple[int, int, int]:
+def unpack_game_timer(timer_value: int | bytes) -> GameTimer:
     """Convert the value stored at 0x45e40 in the gamedata save file.
 
     The value looks like a standard 4-byte integer, but like so many things in
@@ -120,8 +73,30 @@ def gamedata_value_to_duration(timer_value: int, as_tuple=False) -> pendulum.Dur
     as here, using integer division and remainders. In cPython, both methods
     are about as fast as each other.
     """
+    if isinstance(timer_value, bytes):
+        timer_value = int.from_bytes(timer_value, "big")
     hours, min_sec = divmod(timer_value, 4096)
     minutes, seconds = divmod(min_sec, 64)
-    if as_tuple:
-        return hours, minutes, seconds
-    return pendulum.duration(hours=hours, minutes=minutes, seconds=seconds)
+    return GameTimer(hours, minutes, seconds)
+
+
+def unpack_save_timestamp(data: int | bytes) -> SavedTime:
+    """Convert the value stored at 0x45d64 in the gamedata file.
+
+    This value stores the timestamp of the last save, stored as five integers
+    packed into 32 bits as below:
+
+    YYYYYYDD DDDDDDDH HHHHMMMM MMSSSSSS
+
+    where YYYYYY are the years since 2000, DDDDDDDDD are the seconds since the
+    start of the year, HHHHH are the hours, MMMMMM are the minutes and SSSSSS
+    are the seconds of the save time.
+    """
+    if isinstance(data, bytes):
+        data = int.from_bytes(data, "big")
+    year = data >> 26
+    days = (data >> 17) & 511
+    hours = (data >> 12) & 31
+    mins = (data >> 6) & 63
+    secs = data & 63
+    return SavedTime(year, days, hours, mins, secs)
