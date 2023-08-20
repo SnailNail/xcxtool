@@ -45,8 +45,7 @@ class BackupSave(cli.Application):
     dry_run: bool = cli.Flag(["--dry-run"], help="Do not create the archive, just print its name")
 
     def main(self):
-        if self.help_tokens:
-            self._help_names()
+        if self._help_names():
             return
         if result := self.pre_flight_checks() is not None:
             return result
@@ -134,7 +133,9 @@ class BackupSave(cli.Application):
             "{save_date}": "Last modified date/time of the gamedata save file (pendulum.datetime)",
             "{date}": "Current (calendar) date/time (pendulum.datetime)",
         }
-        print(preamble)
-        for token, description in token_descriptions.items():
-            print(f"  {token:14} {description}")
-        self._help_names_run = True
+        if self.help_tokens:
+            print(preamble)
+            for token, description in token_descriptions.items():
+                print(f"  {token:14} {description}")
+            return True
+        return False
