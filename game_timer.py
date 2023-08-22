@@ -9,16 +9,16 @@ There are two addresses that are consistently updated:
   * 0x045e40 (4 bytes) records the game timer
 
 Both the timestamp and timer values are packed integer values. The timestamp
-is comprised of six bit for the year (since 2000), nine bits for the number of
-days into the year and the time of the save (hours, minutes and seconds in 5,
-6 and 6 bits respectively)
+is comprised of six bits for the year (since 2000), nine bits for the number
+of days into the year and the time of the save (hours, minutes and seconds in
+5, 6 and 6 bits respectively)
 
-The timer value records the time since the game starts in hours (30 bits),
+The timer value records the time since the game starts in hours (20 bits),
 minutes (6 bits) and seconds (six) bits.
 
 The values can be unpacked using either integer division and modulo operations
 (as in the unpack_game_timer() function below) or using bitwise
-operations as in the unpack_save_timestamp() function), there is negligible
+operations (as in the unpack_save_timestamp() function), there is negligible
 performance difference between the two in CPython.
 """
 import typing
@@ -88,7 +88,7 @@ def unpack_save_timestamp(data: int | bytes) -> SavedTime:
 
     YYYYYYDD DDDDDDDH HHHHMMMM MMSSSSSS
 
-    where YYYYYY are the years since 2000, DDDDDDDDD are the seconds since the
+    where YYYYYY are the years since 2000, DDDDDDDDD are the days since the
     start of the year, HHHHH are the hours, MMMMMM are the minutes and SSSSSS
     are the seconds of the save time.
     """
