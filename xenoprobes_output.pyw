@@ -23,7 +23,7 @@ Output structure:
 import io
 from typing import Tuple, Mapping
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 import pyperclip
 
 PROBE_SITES = {

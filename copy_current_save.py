@@ -16,7 +16,7 @@ import configparser
 import os
 import pathlib
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 
 
 CONFIG_DEFAULTS = {
