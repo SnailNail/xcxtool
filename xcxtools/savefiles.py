@@ -30,7 +30,7 @@ SAVE_EARLY_GAME = r"G:\Emulation\WiiU\cemu\mlc01\usr\save\00050000\101c4c00\user
 
 class DecryptSave(cli.Application):
     """Decrypt save data"""
-    dump_key = cli.Flag(["-k", "--dump-key"], help="Dump decryption key")
+    dump_key = cli.Flag(["-d", "--dump-key"], help="Dump decryption key")
 
     def __init__(self, executable):
         super().__init__(executable)
@@ -45,9 +45,11 @@ class DecryptSave(cli.Application):
                 print("KEY_FILE must be exactly 512 bytes")
                 return 1
             print(f"Using key {self.key_data[0:32].hex()}...")
+            # noinspection PyTypeChecker
             decrypted, key = decrypt_savedata(data, self.key_data)
         else:
             try:
+                # noinspection PyTypeChecker
                 decrypted, key = decrypt_savedata(data)
             except ValueError:
                 print(f"could not determine encryption key")
@@ -67,9 +69,38 @@ class DecryptSave(cli.Application):
             of_key.write(key, None, "wb")
             copy_mtime(savefile, of_key)
 
-    @cli.switch(["-u", "--use-key"], cli.ExistingFile)
-    def use_key(self, key_file: plumbum.LocalPath):
-        """Use KEY_File to decode savedata. KEY_FILE must be exactly 512 bytes"""
+    @cli.switch(["-k", "--key"], cli.ExistingFile)
+    def key(self, key_file: plumbum.LocalPath):
+        """Use KEY_File to decode save data. KEY_FILE must be exactly 512 bytes"""
+        self.key_data = key_file.read(None, "rb")
+
+
+class EncryptSave(cli.Application):
+    """Encrypt save data"""
+
+    def __init__(self, executable) -> None:
+        super().__init__(executable)
+        self.key_data = None
+
+    @cli.positional(cli.ExistingFile)
+    def main(self, decrypted_data: plumbum.LocalPath):
+        if len(self.key_data) != 512:
+            print("KEY_FILE must be exactly 512 bytes")
+            return 1
+        print(f"Using {decrypted_data}")
+        data = decrypted_data.read(None, "rb")
+        # noinspection PyTypeChecker
+        encrypted, _ = decrypt_savedata(data, self.key_data)
+        of_name = decrypted_data.name + "_encrypted"
+        of = decrypted_data.parent / of_name
+
+        print(f"Writing encrypted data to {of}")
+        of.write(encrypted, None, mode="wb")
+        copy_mtime(decrypted_data, of)
+
+    @cli.switch(["-k", "--key"], cli.ExistingFile, "KEY_FILE", mandatory=True)
+    def key(self, key_file: plumbum.LocalPath):
+        """Key to use to encrypt the save data. Must be a file of size 512 bytes"""
         self.key_data = key_file.read(None, "rb")
 
 

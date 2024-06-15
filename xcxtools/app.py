@@ -8,7 +8,7 @@ import plumbum
 from . import VERSION
 from . import config
 from .backup import BackupSave
-from .savefiles import DecryptSave
+from .savefiles import DecryptSave, EncryptSave
 
 
 class XCXToolsCLI(cli.Application):
@@ -33,3 +33,4 @@ class XCXToolsCLI(cli.Application):
 
 XCXToolsCLI.subcommand("backup", BackupSave)
 XCXToolsCLI.subcommand("decrypt", DecryptSave)
+XCXToolsCLI.subcommand("encrypt", EncryptSave)
