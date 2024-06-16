@@ -37,10 +37,10 @@ class PymemReader:
 class SaveFileReader:
     """Read data from a XCX save file (gamedata)"""
     def __init__(self, save_file: str | os.PathLike):
-        with open(save_file, "wb") as f:
+        with open(save_file, "rb") as f:
             data = f.read()
         key = savefiles.guess_key(data)
-        self.data, _ = savefiles.apply_key(data, key)
+        self.data = savefiles.apply_key(data, key)
         self.player_addr = 0x58
 
     def read_memory(self, offset: int, length: int) -> bytes:
