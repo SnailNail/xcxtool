@@ -6,6 +6,7 @@ import pendulum
 import plumbum
 
 from ..memory_reader import MemoryReader
+from .. import game_timer
 
 
 class_map = {
@@ -55,11 +56,10 @@ def get_character_data(reader: MemoryReader) -> dict:
     }
 
 
-def get_playtime(reader: MemoryReader) -> dict[str, str]:
-    playtime_buffer = reader.read_memory(0x3786120, 12)
-    h, m, s = struct.unpack(">III", playtime_buffer)
-    print(playtime_buffer)
-    return {"play_time": f"{h}-{m:0d}-{s:0d}"}
+def get_playtime(reader: MemoryReader) -> dict[str, game_timer.GameTimer]:
+    playtime_buffer = reader.read_memory(0x45e40 - 0x58, 4)
+    playtime = game_timer.unpack_game_timer(playtime_buffer)
+    return {"play_time": playtime}
 
 
 def _get_name(buffer: bytes) -> str:

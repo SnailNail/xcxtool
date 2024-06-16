@@ -1,6 +1,5 @@
 """Backup Cemu save file"""
 import shutil
-from typing import Any
 
 import plumbum
 from plumbum import local, cli
@@ -21,7 +20,7 @@ class BackupSave(cli.Application):
     backup_dir: plumbum.LocalPath = cli.SwitchAttr(
         ["-b", "--backup-dir"],
         argtype=plumbum.LocalPath,
-        help=f"Backups will be saved to this directory; default is '{config.get('backup.path')}'",
+        help=f"Backups will be saved to this directory",
     )
     create_backup_dir: bool = cli.Flag(
         ["-c", "--create"],
@@ -29,7 +28,7 @@ class BackupSave(cli.Application):
     )
     backup_name: str = cli.SwitchAttr(
         ["-f", "--file"],
-        help=f"Name for the backup file (without extension); default is '{config.get('backup.file_name')}'",
+        help=f"Name for the backup file (without extension)",
     )
     help_tokens: bool = cli.Flag("--help-tokens", help="Show available replacement tokens")
     save_dir: plumbum.LocalPath = cli.SwitchAttr(
@@ -37,12 +36,8 @@ class BackupSave(cli.Application):
         argtype=cli.ExistingDirectory,
         help="Directory containing XCX save files in the st/game subdirectory",
     )
-    archive_format: str = cli.SwitchAttr(
-        ["-a", "--archive-format"],
-        argtype=cli.Set(*_archive_formats),
-        help=f"Archive format for the backup; default is '{config.get('backup.archive_format')}'",
-    )
     dry_run: bool = cli.Flag(["--dry-run"], help="Do not create the archive, just print its name")
+    gamedata: plumbum.LocalPath = None
 
     def main(self):
         if self._help_names():
@@ -55,27 +50,22 @@ class BackupSave(cli.Application):
         field_values = {}
         field_values.update(tokens.get_datetime())
 
-        gamedata = self.save_dir.join("st", "game", "gamedata")
-        if gamedata.exists():
-            field_values.update(tokens.get_mtime(gamedata))
-        else:
-            print("No save file found! Save file mtime not available")
+        field_values.update(tokens.get_mtime(self.gamedata))
 
-        cemu = memory_reader.connect_cemu(
-            config.get_preferred(self.parent.cemu_process_name, "cemu.process_name")
-        )
-        if cemu is not None:
-            field_values.update(tokens.get_character_data(cemu))
-            field_values.update(tokens.get_playtime(cemu))
-            cemu.close()
-        else:
-            print("Cemu process not found, game data not available")
+        gamedata_reader = memory_reader.SaveFileReader(self.gamedata)
+        print("*** gamedata: ", self.gamedata)
+        field_values.update(tokens.get_character_data(gamedata_reader))
+        field_values.update(tokens.get_playtime(gamedata_reader))
 
         archive_name = formatter.ForgivingFormatter().vformat(self.backup_name, (), field_values)
         print(f"Backing up from: {self.save_dir}")
-        print(f"to: {self.backup_dir / archive_name}")
-        _format = config.get_preferred(self.archive_format, "backup.archive_format")
-        print(f"With format {dict(shutil.get_archive_formats())[_format]}")
+        print(f"to: {self.backup_dir}")
+        print(f"With filename {archive_name}.zip")
+        base_name = self.backup_dir / archive_name
+        if not self.dry_run:
+            shutil.make_archive(
+                base_name, "zip", self.save_dir, "st/game", dry_run=self.dry_run
+            )
 
     def pre_flight_checks(self) -> int | None:
         """Various checks before running main() proper"""
@@ -86,9 +76,11 @@ class BackupSave(cli.Application):
     def _check_save_path(self) -> bool:
         if self.save_dir is None:
             self.save_dir = local.path(config.get("cemu.save_path"))
-        if not (self.save_dir / "st").exists():
-            print(f"Cemu save directory not found: {self.save_dir / 'st'}")
+        gamedata = self.save_dir.join("st", "game", "gamedata")
+        if not gamedata.exists():
+            print(f"Could not find gamedata in {self.save_dir}")
             return False
+        self.gamedata = gamedata
         return True
 
     def _check_backup_path(self) -> bool:
