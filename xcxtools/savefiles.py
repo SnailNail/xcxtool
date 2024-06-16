@@ -19,6 +19,7 @@ import os
 
 import plumbum
 from plumbum import cli
+from rich.console import Console
 
 SAVEDATA_PLAYER_OFFSET = -0x58
 SAVEDATA_SIZE = 359984
@@ -27,6 +28,10 @@ SAVEDATA_SIZE = 359984
 SAVE_LATE_GAME = r"G:\Emulation\WiiU\cemu\mlc01\usr\save\00050000\101c4c00\user\80000002\st\game\gamedata"
 # Early game, approx Chapter 3 finished (Obadiah)
 SAVE_EARLY_GAME = r"G:\Emulation\WiiU\cemu\mlc01\usr\save\00050000\101c4c00\user\80000003\st\game\gamedata"
+
+
+_console = Console(highlight=False)
+rprint = _console.print
 
 
 class DecryptSave(cli.Application):
@@ -40,37 +45,37 @@ class DecryptSave(cli.Application):
 
     @cli.positional(cli.ExistingFile)
     def main(self, savefile: plumbum.LocalPath):
-        print(f"Decrypting {savefile}")
+        rprint(f"Decrypting [bold]{savefile}[/bold]")
         data = savefile.read(None, "rb")
 
         if self.key_data is not None:
             if len(self.key_data) != 512:
-                print("KEY_FILE must be exactly 512 bytes")
+                rprint("[bold red]KEY_FILE must be exactly 512 bytes[/bold red]")
                 return 1
-            print(f"Using key {self.key_data[0:32].hex()}...")
+            rprint(f"Using key [green]{self.key_data[0:32].hex()}...[/green]")
             # noinspection PyTypeChecker
 
         else:
             # noinspection PyTypeChecker
             self.key_data = guess_key(data)
             if self.key_data is None:
-                print(f"could not determine encryption key")
+                rprint("[bold red]could not determine encryption key[/bold red]")
                 return 1
-            print(f"Found key: {self.key_data[0:32].hex()}...")
+            rprint(f"Found key: [green]{self.key_data[0:32].hex()}...[/green]")
 
         # noinspection PyTypeChecker
         decrypted = apply_key(data, self.key_data)
         of_name = savefile.name + "_decrypted"
         of: plumbum.LocalPath = savefile.parent / of_name
 
-        print(f"Writing decrypted data to {of}")
+        rprint(f"Writing decrypted data to [green]{of}[/green]")
         of.write(decrypted, None, "wb")
         copy_mtime(savefile, of)
 
         if self.dump_key:
             of_key_name = savefile.name + "_key"
             of_key = savefile.parent / of_key_name
-            print(f"Writing key to {of_key}")
+            rprint(f"Writing key to [green]{of_key}[green]")
             of_key.write(self.key_data, None, "wb")
             copy_mtime(savefile, of_key)
 
@@ -90,16 +95,17 @@ class EncryptSave(cli.Application):
     @cli.positional(cli.ExistingFile)
     def main(self, decrypted_data: plumbum.LocalPath):
         if len(self.key_data) != 512:
-            print("KEY_FILE must be exactly 512 bytes")
+            rprint("[bold red]KEY_FILE must be exactly 512 bytes[/bold red]")
             return 1
-        print(f"Using {decrypted_data}")
+
+        rprint(f"Using key [green]{self.key_data[0:32].hex()}...[/green]")
         data = decrypted_data.read(None, "rb")
         # noinspection PyTypeChecker
         encrypted = apply_key(data, self.key_data)
         of_name = decrypted_data.name + "_encrypted"
         of = decrypted_data.parent / of_name
 
-        print(f"Writing encrypted data to {of}")
+        rprint(f"Writing encrypted data to [green]{of}[/green]")
         of.write(encrypted, None, mode="wb")
         copy_mtime(decrypted_data, of)
 

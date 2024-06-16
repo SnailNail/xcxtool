@@ -3,6 +3,7 @@ import shutil
 
 import plumbum
 from plumbum import local, cli
+from rich import print as rprint
 
 from .. import config, memory_reader
 from . import tokens, formatter
@@ -53,14 +54,13 @@ class BackupSave(cli.Application):
         field_values.update(tokens.get_mtime(self.gamedata))
 
         gamedata_reader = memory_reader.SaveFileReader(self.gamedata)
-        print("*** gamedata: ", self.gamedata)
         field_values.update(tokens.get_character_data(gamedata_reader))
         field_values.update(tokens.get_playtime(gamedata_reader))
 
-        archive_name = formatter.ForgivingFormatter().vformat(self.backup_name, (), field_values)
-        print(f"Backing up from: {self.save_dir}")
-        print(f"to: {self.backup_dir}")
-        print(f"With filename {archive_name}.zip")
+        archive_name = formatter.ForgivingFormatter().format(self.backup_name, **field_values)
+        rprint(f"Backing up from: [green]{self.save_dir}[/green]")
+        rprint(f"to: [green]{self.backup_dir}[/green]")
+        rprint(f"With filename [green]{archive_name}.zip[/green]")
         base_name = self.backup_dir / archive_name
         if not self.dry_run:
             shutil.make_archive(

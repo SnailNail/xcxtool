@@ -4,3 +4,4 @@ Pymem~=1.10
 FreeSimpleGUI~=5.1.0
 pyperclip~=1.8
 pendulum~=2.1
+rich~=13.3
