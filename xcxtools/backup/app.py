@@ -75,7 +75,7 @@ class BackupSave(cli.Application):
 
     def _check_save_path(self) -> bool:
         if self.save_dir is None:
-            self.save_dir = local.path(config.get("cemu.save_path"))
+            self.save_dir = local.path(config.get("backup.save_directory"))
         gamedata = self.save_dir.join("st", "game", "gamedata")
         if not gamedata.exists():
             print(f"Could not find gamedata in {self.save_dir}")
@@ -85,7 +85,7 @@ class BackupSave(cli.Application):
 
     def _check_backup_path(self) -> bool:
         if self.backup_dir is None:
-            self.backup_dir = local.path(config.get("backup.path"))
+            self.backup_dir = local.path(config.get("backup.backup_directory"))
         if self.backup_dir.exists():
             return True
         if self.create_backup_dir:
