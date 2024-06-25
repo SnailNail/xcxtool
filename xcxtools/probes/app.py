@@ -10,10 +10,53 @@ from xcxtools.probes import data
 
 
 class FrontierNavTool(cli.Application):
+    """Utility to get FrontierNav probe inventory and layout
+
+    By default, this will dump the information into a Xenoprobes inventory format,
+    which can be copied or redirected to a file. Specific probe types can be excluded
+    from the inventory using the -x option
+    """
+
+    inventory: Counter[data.Probe]
+    sites: dict[data.ProbeSite, data.Probe]
+    _exclude: set = set()
 
     def main(self, target: cli.ExistingFile = None):
         if target is None:
-            print(f"Using config file")
+            savedata = get_save_data_from_backup_folder()
+        else:
+            savedata = get_save_data_from_file(target)
+        self.inventory = get_probe_inventory(savedata[data.PROBE_INVENTORY_SLICE])
+        self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
+        print(self.format_xenoprobes_inventory())
+
+    @cli.switch(["-x", "--exclude"], str, argname="PROBES")
+    def exclude(self, exclude_set: str):
+        """Exclude probe types from Xenoprobes inventory, e.g. "-x M1,R1\""""
+        self._exclude = split_exclude(exclude_set)
+
+    def format_xenoprobes_inventory(self) -> str:
+        """Build a xenoprobes inventory as a string"""
+        line_fmt = "{enabled}{type},{quantity}\n"
+        inventory = "# inventory.csv\n"
+        for probe, quantity in self.inventory.items():
+            if not probe.xenoprobes_name:
+                continue
+            enabled = self._is_enabled(probe)
+            inventory += line_fmt.format(enabled=enabled, type=probe.xenoprobes_name, quantity=quantity)
+
+        return inventory
+
+    def format_xenoprobes_site(self) -> str:
+        """Build a xenoprobes sites.csv as a string"""
+        line_fmt = "{enabled}{site}"
+
+    def _is_enabled(self, probe: data.Probe) -> str:
+        if probe.xenoprobes_name in self._exclude:
+            return "# "
+        if probe.type_id == 254:
+            return "# "
+        return ""
 
 
 def get_save_data_from_file(file_path: LocalPath) -> bytes:
@@ -21,7 +64,7 @@ def get_save_data_from_file(file_path: LocalPath) -> bytes:
     if file_path.stat().st_size != 359984:
         raise ValueError("Savefile should be exactly 359,984 bytes")
     # noinspection PyTypeChecker
-    raw_data: bytes = file_path.read(mode="b")
+    raw_data: bytes = file_path.read(mode="rb")
     key = savefiles.guess_key(raw_data)
     return savefiles.apply_key(raw_data, key)
 
@@ -47,7 +90,8 @@ def get_probe_inventory(probe_inventory_buffer: bytes) -> Counter[data.Probe]:
         probe, quantity = data.probe_and_quantity_from_bytes(chunk)
         probes_inventory[probe] += quantity
 
-    return probes_inventory
+    sorted_inventory = Counter({k: n for k, n in sorted(probes_inventory.items())})
+    return sorted_inventory
 
 
 def get_installed_probes(probe_sites_buffer: bytes) -> dict[data.ProbeSite, data.Probe]:
@@ -61,3 +105,7 @@ def get_installed_probes(probe_sites_buffer: bytes) -> dict[data.ProbeSite, data
     for index, installed_type in enumerate(installed):
         sites[data.ProbeSite.from_id(index)] = data.Probe.from_id(installed_type)
     return sites
+
+
+def split_exclude(exclude_arg: str) -> set[str]:
+    return {p.strip().upper() for p in exclude_arg.split(",")}
