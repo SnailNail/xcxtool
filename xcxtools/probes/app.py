@@ -21,6 +21,11 @@ class FrontierNavTool(cli.Application):
     sites: dict[data.ProbeSite, data.Probe]
     _exclude: set = set()
 
+    include_sites = cli.Flag(["-s", "--include-sites"], help="Include sites in output")
+    include_inventory = cli.Flag(
+        ["-i", "--include-inventory"], help="Include probe inventory in output"
+    )
+
     def main(self, target: cli.ExistingFile = None):
         if target is None:
             savedata = get_save_data_from_backup_folder()
@@ -28,7 +33,11 @@ class FrontierNavTool(cli.Application):
             savedata = get_save_data_from_file(target)
         self.inventory = get_probe_inventory(savedata[data.PROBE_INVENTORY_SLICE])
         self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
-        print(self.format_xenoprobes_inventory())
+
+        if self.include_inventory:
+            print(self.format_xenoprobes_inventory())
+        if self.include_sites:
+            print(self.format_xenoprobes_sites())
 
     @cli.switch(["-x", "--exclude"], str, argname="PROBES")
     def exclude(self, exclude_set: str):
@@ -39,24 +48,39 @@ class FrontierNavTool(cli.Application):
         """Build a xenoprobes inventory as a string"""
         line_fmt = "{enabled}{type},{quantity}\n"
         inventory = "# inventory.csv\n"
+
         for probe, quantity in self.inventory.items():
             if not probe.xenoprobes_name:
                 continue
-            enabled = self._is_enabled(probe)
+            enabled = self._include_in_inventory(probe)
             inventory += line_fmt.format(enabled=enabled, type=probe.xenoprobes_name, quantity=quantity)
 
         return inventory
 
-    def format_xenoprobes_site(self) -> str:
+    def format_xenoprobes_sites(self) -> str:
         """Build a xenoprobes sites.csv as a string"""
-        line_fmt = "{enabled}{site}"
+        sites = "# sites.csv\n"
+        for site, probe in sorted(self.sites.items(), key=lambda t: t[0].xenoprobes_name):
+            if site.game_name == "skip":
+                continue
+            sites += self._format_site_row(site, probe)
 
-    def _is_enabled(self, probe: data.Probe) -> str:
+        return sites
+
+    def _include_in_inventory(self, probe: data.Probe) -> str:
         if probe.xenoprobes_name in self._exclude:
             return "# "
-        if probe.type_id == 254:
-            return "# "
         return ""
+
+    def _format_site_row(self, site: data.ProbeSite, probe: data.Probe) -> str:
+        line_fmt = "{locked}{site:xrow}\n"
+        locked = "#" if probe.type_id == 255 else ""
+
+        found_spots = int(config.get(f"sightseeing_spots.{site.xenoprobes_name}", 0))
+        if found_spots < site.max_sightseeing_spots:
+            site = site._replace(max_sightseeing_spots=found_spots)
+
+        return line_fmt.format(locked=locked, site=site)
 
 
 def get_save_data_from_file(file_path: LocalPath) -> bytes:

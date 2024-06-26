@@ -69,6 +69,12 @@ class ProbeSite(NamedTuple):
             return self.xenoprobes_name
         if format_spec == "s":
             return str(self.max_sightseeing_spots)
+        if format_spec == "xrow":
+            # site,mining grade, revenue grade, combat grade, sights
+            ores = ""
+            if self.ores:
+                ores = "," + ",".join(self.ores)
+            return "{},{},{},{},{}{}".format(*self[2:7], ores)
 
 
 def probe_and_quantity_from_bytes(buffer: bytes) -> tuple[Probe, int]:
