@@ -25,6 +25,7 @@ class FrontierNavTool(cli.Application):
     include_inventory = cli.Flag(
         ["-i", "--include-inventory"], help="Include probe inventory in output"
     )
+    include_layout = cli.Flag(["-l", "--include-layout"], help="Include probe layout in output")
 
     def main(self, target: cli.ExistingFile = None):
         if target is None:
@@ -38,6 +39,8 @@ class FrontierNavTool(cli.Application):
             print(self.format_xenoprobes_inventory())
         if self.include_sites:
             print(self.format_xenoprobes_sites())
+        if self.include_layout:
+            print(self.format_xenoprobes_setup())
 
     @cli.switch(["-x", "--exclude"], str, argname="PROBES")
     def exclude(self, exclude_set: str):
@@ -66,6 +69,20 @@ class FrontierNavTool(cli.Application):
             sites += self._format_site_row(site, probe)
 
         return sites
+
+    def format_xenoprobes_setup(self) -> str:
+        """Build a xenoprobes-1.x layout.csv as a string.
+
+        This can be used with the --setup argument to show the output of a given
+        probe layout
+        """
+        layout = "# layout.csv\n"
+        for site, probe in self.sites.items():
+            if site.game_name == "skip":
+                continue
+            layout += f"{site.xenoprobes_name},{probe.xenoprobes_name}\n"
+
+        return layout
 
     def _include_in_inventory(self, probe: data.Probe) -> str:
         if probe.xenoprobes_name in self._exclude:

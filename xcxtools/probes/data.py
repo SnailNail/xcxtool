@@ -84,7 +84,7 @@ def probe_and_quantity_from_bytes(buffer: bytes) -> tuple[Probe, int]:
 
 
 _probe_types = {
-    1: Probe(1, "Basic Probe", ""),
+    1: Probe(1, "Basic Probe", "BA"),
     2: Probe(2, "Mining Probe G1", "M1"),
     3: Probe(3, "Mining Probe G2", "M2"),
     4: Probe(4, "Mining Probe G3", "M3"),
@@ -105,12 +105,12 @@ _probe_types = {
     23: Probe(23, "Booster Probe G2", "B2"),
     26: Probe(26, "Storage Probe", "S"),
     29: Probe(29, "Duplicator Probe", "D"),
-    30: Probe(30, "Fuel Recovery Probe", ""),
-    31: Probe(31, "Melee Attack Probe", ""),
-    32: Probe(32, "Ranged Attack Probe", ""),
-    33: Probe(33, "EZ Debuff Probe", ""),
-    34: Probe(34, "Attribute Resistance Probe", ""),
-    254: Probe(254, "[LOCKED]", ""),
+    30: Probe(30, "Fuel Recovery Probe", "FR"),
+    31: Probe(31, "Melee Attack Probe", "MA"),
+    32: Probe(32, "Ranged Attack Probe", "RA"),
+    33: Probe(33, "EZ Debuff Probe", "ED"),
+    34: Probe(34, "Attribute Resistance Probe", "AR"),
+    254: Probe(254, "[LOCKED]", "XX"),
 }
 
 _sites_defaults = {
