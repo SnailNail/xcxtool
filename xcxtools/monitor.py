@@ -1,7 +1,6 @@
 """Un-integrated tools for watching memory"""
 
 import dataclasses
-import datetime
 import json
 import os
 import time
@@ -9,6 +8,7 @@ from pathlib import Path
 
 import dotenv
 import obsws_python
+import pendulum
 
 from .memory_reader import PymemReader, connect_cemu
 
@@ -18,7 +18,7 @@ dotenv.load_dotenv()
 
 @dataclasses.dataclass
 class CompareResult:
-    time: datetime.datetime
+    time: pendulum.datetime
     changes: dict[int, tuple[int, int]]
 
     def format(self, datefmt: str = "%x %X", addrfmt: str = "#08x", valuefmt: str = "#04x") -> str:
@@ -28,7 +28,10 @@ class CompareResult:
         return out
 
     def to_json(self):
-        ...
+        return {
+            "datetime": str(self.time),
+            "changes": self.changes,
+        }
 
     def __bool__(self) -> bool:
         return bool(self.changes)
@@ -53,7 +56,7 @@ class Comparator:
         self.previous = self.initial
 
     def compare(self) -> CompareResult:
-        now = datetime.datetime.now()
+        now = pendulum.now("local")
         mem = self._read()
         deltas = {}
         for offset, pair in enumerate(zip(self.previous, mem)):
@@ -65,10 +68,10 @@ class Comparator:
     def monitor(self, interval: float = 1.0):
         if interval < 0.5:
             raise ValueError("interval should be greater than 0.5 seconds")
-        self._monitor(interval)
+        return self._monitor(interval)
 
     def _monitor(self, interval: float, *, quiet: bool = False):
-        monitor_start = datetime.datetime.now()
+        monitor_start = pendulum.now()
         last = monitor_start.timestamp()
         print(f"Started monitor at {monitor_start}")
         changes = {}
@@ -80,11 +83,12 @@ class Comparator:
                     timedelta = delta.time - monitor_start
                     hours, rest = divmod(timedelta.total_seconds(), 3600)
                     minutes, seconds = rest = divmod(rest, 60)
+                    ts = f"{int(hours)}:{int(minutes):02d}:{seconds:05.2f}"
                     if not quiet:
-                        print(f"{int(hours)}:{int(minutes):02d}:{seconds:05.2f}")
+                        print(ts)
                         for addr, (before, after) in delta.changes.items():
                             print(f"  {addr:#08x}: {before:#04x} -> {after:#04x}")
-                    changes[timedelta] = dataclasses.asdict(delta)
+                    changes[ts] = delta.to_json()
                 current = delta.time.timestamp()
                 since_last = current - last
                 if since_last >= interval:
@@ -94,7 +98,8 @@ class Comparator:
                 time.sleep(next_in)
         except KeyboardInterrupt:
             print("Caught Ctrl-C, stopping monitor")
-        return changes
+        finally:
+            return changes
 
     def monitor_and_record(self, interval: float = 1.0):
         """Monitor changes in and record with OBS.
