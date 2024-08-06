@@ -144,8 +144,20 @@ class Comparator:
 
 
 if __name__ == '__main__':
+    incs = [range(205952, 233736)]  # first big unknown block
+    excs = [
+        range(0x0, 0xc620),  # Character & skell data
+        range(0xc820, 0xc82c),  # Miranium, credits, tickets
+        range(0xc850, 0x32228),  # Inventory,
+        range(0x39108, 0x39168),  # BLADE greetings
+        range(0x39174, 0x39180),  # BLADE level, points, division
+        range(0x39540, 0x45d68),  # BLADE Affinity characters, BLADE medals, save time
+        range(0x45e40, 0x45244),  # Play time
+        range(0x480c0, 0x48274),  # FrontierNav layout
+        range(0x48ac8, 0x48acb),  # Field skill levels
+    ]
     reader = connect_cemu()
     if reader is None:
         exit(1)
-    comp = Comparator(reader, [range(205952, 233736)])
+    comp = Comparator(reader, exclude=excs)
     comp.monitor_and_record()
