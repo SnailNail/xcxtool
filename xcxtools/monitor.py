@@ -82,7 +82,7 @@ class Comparator:
                 if delta:
                     timedelta = delta.time - monitor_start
                     hours, rest = divmod(timedelta.total_seconds(), 3600)
-                    minutes, seconds = rest = divmod(rest, 60)
+                    minutes, seconds = divmod(rest, 60)
                     ts = f"{int(hours)}:{int(minutes):02d}:{seconds:05.2f}"
                     if not quiet:
                         print(ts)
