@@ -65,6 +65,21 @@ class Comparator:
         self.previous = mem
         return CompareResult(now, deltas)
 
+    def _cmp(self):
+        """WIP"""
+        now = pendulum.now()
+        new_mem = self._read()
+        deltas = {}
+        last_changed_offset = 0
+        last_before, last_after = [], []
+
+        for offset, (before, after) in enumerate(zip(self.previous, new_mem)):
+            if not self._valid_offset(offset) or before == after:
+                continue
+            if offset == last_changed_offset + len(last_after):
+                last_before.append(before)
+                last_after.append(after)
+
     def monitor(self, interval: float = 1.0):
         if interval < 0.5:
             raise ValueError("interval should be greater than 0.5 seconds")
