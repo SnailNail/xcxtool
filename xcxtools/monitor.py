@@ -167,6 +167,7 @@ if __name__ == '__main__':
         range(0x39108, 0x39168),  # BLADE greetings
         range(0x39174, 0x39180),  # BLADE level, points, division
         range(0x39540, 0x45d68),  # BLADE Affinity characters, BLADE medals, save time
+        range(0x45d71, 0x45e18),  # Fast travel mysteries
         range(0x45e40, 0x45e44),  # Play time
         range(0x480c0, 0x48274),  # FrontierNav layout
         range(0x48ac8, 0x48acb),  # Field skill levels
