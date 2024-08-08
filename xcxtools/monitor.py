@@ -30,6 +30,7 @@ class CompareResult:
     def to_json(self):
         return {
             "datetime": str(self.time),
+            "comment": "",
             "changes": self.changes,
         }
 
