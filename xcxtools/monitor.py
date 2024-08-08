@@ -5,15 +5,20 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 import dotenv
 import obsws_python
 import pendulum
 
 from .memory_reader import PymemReader, connect_cemu
+from .data import locations
 
 
 dotenv.load_dotenv()
+
+
+_locations_by_name: dict[str, locations.Location] = {}
 
 
 @dataclasses.dataclass
@@ -157,6 +162,61 @@ class Comparator:
         if any(offset in r for r in self.excludes):
             return False
         return True
+
+
+def process_locations_from_monitor_json(json_path: str) -> list[locations.Location]:
+    with open(json_path) as f:
+        data = json.load(f)
+    found = 0
+    no_match = 0
+    matched = []
+    for delta in data.values():
+        if not delta["comment"].lower().startswith("location:"):
+            continue
+        found += 1
+        location = match_json_to_location(delta)
+        if location is None:
+            no_match += 1
+            continue
+        matched.append(location)
+    return matched
+
+
+def match_json_to_location(monitor_delta: dict[str, Any]) -> locations.Location | None:
+    """Get a location from """
+    if not _locations_by_name:
+        _locations_by_name.update((loc.name, loc) for loc in locations.locations)
+
+    *_, loc_name = monitor_delta["comment"].partition(":")
+    location = _locations_by_name.get(loc_name)
+    if location is None:
+        print(f"Could not match name: {loc_name}")
+        return None
+
+    offsets = list(monitor_delta["changes"])
+    if len(offsets) > 1:
+        offset = _get_offset_from_user(offsets)
+    else:
+        offset = int(offsets[0])
+
+    before, after = monitor_delta["changes"][str(offset)]
+    bit = after - before
+    if bit <= 0:
+        print(f"Invalid data change ({before:#04x} -> {after:#04x}")
+    return location._replace(offset=offset, bit=bit)
+
+
+def _get_offset_from_user(offsets: list[int]) -> int:
+    for n, offset in enumerate(offsets):
+        print(f" {n + 1:>4d}: {int(offset):#08x}")
+    prompt = f"Multiple offsets in change, please select one (1 - {len(offsets)}): "
+    choice = -1
+    while choice < 1 or choice > len(offsets):
+        try:
+            choice = int(input(prompt))
+        except ValueError:
+            continue
+    return int(offsets[choice - 1])
 
 
 if __name__ == '__main__':
