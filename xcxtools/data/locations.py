@@ -1,18 +1,20 @@
 """Records and theories for location data in save files"""
 
-import typing
+from typing import NamedTuple
 
 
-class Location(typing.NamedTuple):
+class Location(NamedTuple):
     offset: int
     bit: int
     name: str
     location_id: int
     location_type: int
-    flag: int = 0
-    condition: int = 0
     worth: int = 0
     fspot: int = 0
+
+    def __repr__(self):
+        return (f'Location({self.offset:#08x}, {self.bit:#04x}, "{self.name}", {self.location_id}, '
+                f'{self.location_type}, {self.worth}, {self.fspot})')
 
 
 locations = [
