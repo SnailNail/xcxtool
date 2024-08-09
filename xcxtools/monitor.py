@@ -22,6 +22,16 @@ _locations_by_name: dict[str, locations.Location] = {}
 
 
 @dataclasses.dataclass
+class MemoryDelta:
+    offset: int = 0
+    before: list[int] = dataclasses.field(default_factory=list)
+    after: list[int] = dataclasses.field(default_factory=list)
+
+    def __bool__(self):
+        return any((self.offset, self.before, self.after))
+
+
+@dataclasses.dataclass
 class CompareResult:
     time: pendulum.datetime
     changes: dict[int, tuple[int, int]]
@@ -73,18 +83,16 @@ class Comparator:
 
     def _cmp(self):
         """WIP"""
-        now = pendulum.now()
         new_mem = self._read()
         deltas = {}
-        last_changed_offset = 0
-        last_before, last_after = [], []
+        last_delta = MemoryDelta()
+        now = pendulum.now()
 
         for offset, (before, after) in enumerate(zip(self.previous, new_mem)):
             if not self._valid_offset(offset) or before == after:
                 continue
-            if offset == last_changed_offset + len(last_after):
-                last_before.append(before)
-                last_after.append(after)
+
+        return CompareResult(now, deltas)
 
     def monitor(self, interval: float = 1.0):
         if interval < 0.5:
