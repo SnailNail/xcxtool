@@ -54,24 +54,21 @@ class MemoryDelta:
 @dataclasses.dataclass
 class CompareResult:
     time: pendulum.datetime
-    changes: dict[int, MemoryDelta]
+    changes: list[MemoryDelta]
 
     def format(
         self, datefmt: str = "%x %X", addrfmt: str = "#08x", valuefmt: str = "#04x"
     ) -> str:
         out = f"{self.time:{datefmt}}\n"
-        for addr, d in self.changes.items():
-            out += f"  {addr:{addrfmt}}: {[format(i, valuefmt) for i in d.before]} -> {[format(i, valuefmt) for i in d.after]}\n"
+        for c in self.changes:
+            out += f"  {c.offset:{addrfmt}}: {[format(i, valuefmt) for i in c.before]} -> {[format(i, valuefmt) for i in c.after]}\n"
         return out
 
     def to_json(self):
         return {
             "datetime": str(self.time),
             "comment": "",
-            "changes": {
-                offset: dataclasses.asdict(delta)
-                for offset, delta in self.changes.items()
-            },
+            "changes": [dataclasses.asdict(change) for change in self.changes],
         }
 
     def __bool__(self) -> bool:
@@ -99,17 +96,17 @@ class Comparator:
     def compare(self) -> CompareResult:
         now = pendulum.now("local")
         mem = self._read()
-        deltas = {}
-        for offset, pair in enumerate(zip(self.previous, mem)):
-            if pair[0] != pair[1] and self._valid_offset(offset):
-                deltas[offset] = MemoryDelta(offset, [pair[0]], [pair[1]])
+        deltas = []
+        for offset, (before, after) in enumerate(zip(self.previous, mem)):
+            if before != after and self._valid_offset(offset):
+                deltas.append(MemoryDelta(offset, [before], [after]))
         self.previous = mem
         return CompareResult(now, deltas)
 
     def aggregate_compare(self) -> CompareResult:
         """WIP"""
         new_mem = self._read()
-        deltas = {}
+        deltas = []
         current_run = None
         now = pendulum.now()
 
@@ -117,15 +114,15 @@ class Comparator:
             if not self._valid_offset(offset) or before == after:
                 continue
             if current_run is None:
-                current_run = MemoryDelta(offset, before, after)
+                current_run = MemoryDelta(offset, [before], [after])
             if offset == current_run.next_offset:
                 current_run.append(before, after)
             else:
-                deltas[current_run.offset] = current_run
+                deltas.append(current_run)
                 current_run = MemoryDelta(offset, [before], [after])
 
         if current_run is not None:
-            deltas[current_run.offset] = current_run
+            deltas.append(current_run)
 
         self.previous = new_mem
         return CompareResult(now, deltas)
@@ -167,8 +164,8 @@ class Comparator:
                     ts = f"{int(hours)}:{int(minutes):02d}:{seconds:05.2f}"
                     if not quiet:
                         print(ts)
-                        for addr, d in delta.changes.items():
-                            print(f"  {d}")
+                        for change in delta.changes:
+                            print(f"  {change}")
                     changes[ts] = delta.to_json()
                 current = delta.time.timestamp()
                 since_last = current - last
