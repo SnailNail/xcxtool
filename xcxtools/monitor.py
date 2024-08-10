@@ -34,8 +34,12 @@ class MemoryDelta:
         return self.to_str()
 
     def to_str(self, address_format="#08x", value_format="#04x"):
-        before_str = [format(i, value_format) for i in self.before]
-        after_str = [format(i, value_format) for i in self.after]
+        if len(self.before) == 1:
+            before_str = format(self.before[0], value_format)
+            after_str = format(self.after[0], value_format)
+        else:
+            before_str = [format(i, value_format) for i in self.before]
+            after_str = [format(i, value_format) for i in self.after]
         return f"{self.offset:{address_format}}: {before_str} -> {after_str}"
 
     def append(self, new_before, new_after):
