@@ -11,8 +11,8 @@ import dotenv
 import obsws_python
 import pendulum
 
-from .memory_reader import PymemReader, connect_cemu
-from .data import locations
+from xcxtools.memory_reader import PymemReader, connect_cemu
+from xcxtools.data import locations
 
 
 dotenv.load_dotenv()
@@ -309,25 +309,3 @@ def _get_offset_from_user(offsets: list[str]) -> int:
         except ValueError:
             continue
     return int(offsets[choice - 1])
-
-
-if __name__ == "__main__":
-    incs = [range(205952, 233736)]  # first big unknown block
-    excs = [
-        range(0x0, 0xC620),  # Character & skell data
-        range(0xC820, 0xC82C),  # Miranium, credits, tickets
-        range(0xC850, 0x32228),  # Inventory,
-        range(0x39108, 0x39168),  # BLADE greetings
-        range(0x39174, 0x39180),  # BLADE level, points, division
-        range(0x39540, 0x45D68),  # BLADE Affinity characters, BLADE medals, save time
-        range(0x45D71, 0x45E18),  # Fast travel mysteries
-        range(0x45E40, 0x45E44),  # Play time
-        range(0x480C0, 0x48274),  # FrontierNav layout
-        range(0x48AC8, 0x48ACB),  # Field skill levels
-    ]
-    reader = connect_cemu()
-    if reader is None:
-        exit(1)
-    comp = Comparator(reader, exclude=excs)
-    # comp.monitor_and_record(aggregate_runs=False)
-    comp.monitor()

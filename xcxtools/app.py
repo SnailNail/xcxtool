@@ -9,6 +9,7 @@ from . import VERSION
 from . import config
 from .backup import BackupSave
 from .savefiles import DecryptSave, EncryptSave
+from .monitor import MonitorCemu
 from .probes import FrontierNavTool
 
 
@@ -36,3 +37,4 @@ XCXToolsCLI.subcommand("backup", BackupSave)
 XCXToolsCLI.subcommand("decrypt", DecryptSave)
 XCXToolsCLI.subcommand("encrypt", EncryptSave)
 XCXToolsCLI.subcommand("fnav", FrontierNavTool)
+XCXToolsCLI.subcommand("monitor", MonitorCemu)
