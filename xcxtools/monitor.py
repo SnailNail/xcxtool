@@ -115,7 +115,7 @@ class Comparator:
                 continue
             if current_run is None:
                 current_run = MemoryDelta(offset, [before], [after])
-            if offset == current_run.next_offset:
+            elif offset == current_run.next_offset:
                 current_run.append(before, after)
             else:
                 deltas.append(current_run)
