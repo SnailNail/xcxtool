@@ -101,25 +101,49 @@ class Comparator:
         self.previous = mem
         return CompareResult(now, deltas)
 
-    def _cmp(self):
+    def aggregate_compare(self) -> CompareResult:
         """WIP"""
         new_mem = self._read()
         deltas = {}
-        last_delta = MemoryDelta()
+        current_run = None
         now = pendulum.now()
 
         for offset, (before, after) in enumerate(zip(self.previous, new_mem)):
             if not self._valid_offset(offset) or before == after:
                 continue
+            if current_run is None:
+                current_run = MemoryDelta(offset, before, after)
+            if offset == current_run.next_offset:
+                current_run.append(before, after)
+            else:
+                deltas[current_run.offset] = current_run
+                current_run = MemoryDelta(offset, [before], [after])
 
+        if current_run is not None:
+            deltas[current_run.offset] = current_run
+
+        self.previous = new_mem
         return CompareResult(now, deltas)
 
-    def monitor(self, interval: float = 1.0):
+    def monitor(self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True):
+        """Continuously compare memory states and interval seconds.
+
+        If quiet is True, no output will be printed, only a dictionary of changes
+        will be returned
+
+        If aggregate_runs is True, changes in continuous memory blocks will be
+        aggregated into a single result
+        """
         if interval < 0.5:
             raise ValueError("interval should be greater than 0.5 seconds")
-        return self._monitor(interval)
+        return self._monitor(interval, quiet=quiet, aggregate_runs=aggregate_runs)
 
-    def _monitor(self, interval: float, *, quiet: bool = False):
+    def _monitor(self, interval: float, *, quiet: bool, aggregate_runs: bool):
+        if aggregate_runs:
+            compare_func = self.aggregate_compare
+        else:
+            compare_func = self.compare
+
         monitor_start = pendulum.now()
         last = monitor_start.timestamp()
         print(f"Started monitor at {monitor_start}")
@@ -128,7 +152,7 @@ class Comparator:
 
         try:
             while should_continue:
-                delta = self.compare()
+                delta = compare_func()
                 if delta:
                     timedelta = delta.time - monitor_start
                     hours, rest = divmod(timedelta.total_seconds(), 3600)
