@@ -30,23 +30,39 @@ class MemoryDelta:
     def __bool__(self):
         return any((self.offset, self.before, self.after))
 
+    def __str__(self):
+        return self.to_str()
+
+    def to_str(self, address_format="#08x", value_format="#04x"):
+        before_str = [format(i, value_format) for i in self.before]
+        after_str = [format(i, value_format) for i in self.after]
+        return f"{self.offset:{address_format}}: {before_str} -> {after_str}"
+
+    def append(self, new_before, new_after):
+        self.before.append(new_before)
+        self.after.append(new_after)
+
+    @property
+    def next_offset(self) -> int:
+        return self.offset + len(self.after)
+
 
 @dataclasses.dataclass
 class CompareResult:
     time: pendulum.datetime
-    changes: dict[int, tuple[int, int]]
+    changes: dict[int, MemoryDelta]
 
     def format(self, datefmt: str = "%x %X", addrfmt: str = "#08x", valuefmt: str = "#04x") -> str:
         out = f"{self.time:{datefmt}}\n"
-        for addr, (before, after) in self.changes.items():
-            out += f"  {addr:{addrfmt}}: {before:{valuefmt}} -> {after:{valuefmt}}\n"
+        for addr, d in self.changes.items():
+            out += f"  {addr:{addrfmt}}: {[format(i, valuefmt) for i in d.before]} -> {[format(i, valuefmt) for i in d.after]}\n"
         return out
 
     def to_json(self):
         return {
             "datetime": str(self.time),
             "comment": "",
-            "changes": self.changes,
+            "changes": {offset: dataclasses.asdict(delta) for offset, delta in self.changes.items()},
         }
 
     def __bool__(self) -> bool:
@@ -77,7 +93,7 @@ class Comparator:
         deltas = {}
         for offset, pair in enumerate(zip(self.previous, mem)):
             if pair[0] != pair[1] and self._valid_offset(offset):
-                deltas[offset] = pair
+                deltas[offset] = MemoryDelta(offset, [pair[0]], [pair[1]])
         self.previous = mem
         return CompareResult(now, deltas)
 
@@ -104,9 +120,10 @@ class Comparator:
         last = monitor_start.timestamp()
         print(f"Started monitor at {monitor_start}")
         changes = {}
+        should_continue = True
 
         try:
-            while True:
+            while should_continue:
                 delta = self.compare()
                 if delta:
                     timedelta = delta.time - monitor_start
@@ -115,8 +132,8 @@ class Comparator:
                     ts = f"{int(hours)}:{int(minutes):02d}:{seconds:05.2f}"
                     if not quiet:
                         print(ts)
-                        for addr, (before, after) in delta.changes.items():
-                            print(f"  {addr:#08x}: {before:#04x} -> {after:#04x}")
+                        for addr, d in delta.changes.items():
+                            print(f"  {d}")
                     changes[ts] = delta.to_json()
                 current = delta.time.timestamp()
                 since_last = current - last
@@ -127,8 +144,8 @@ class Comparator:
                 time.sleep(next_in)
         except KeyboardInterrupt:
             print("Caught Ctrl-C, stopping monitor")
-        finally:
-            return changes
+
+        return changes
 
     def monitor_and_record(self, interval: float = 1.0):
         """Monitor changes in and record with OBS.
@@ -236,7 +253,7 @@ if __name__ == '__main__':
         range(0x39108, 0x39168),  # BLADE greetings
         range(0x39174, 0x39180),  # BLADE level, points, division
         range(0x39540, 0x45d68),  # BLADE Affinity characters, BLADE medals, save time
-        range(0x45d71, 0x45e18),  # Fast travel mysteries
+        # range(0x45d71, 0x45e18),  # Fast travel mysteries
         range(0x45e40, 0x45e44),  # Play time
         range(0x480c0, 0x48274),  # FrontierNav layout
         range(0x48ac8, 0x48acb),  # Field skill levels
@@ -245,4 +262,5 @@ if __name__ == '__main__':
     if reader is None:
         exit(1)
     comp = Comparator(reader, exclude=excs)
-    comp.monitor_and_record()
+    # comp.monitor_and_record()
+    comp.monitor()
