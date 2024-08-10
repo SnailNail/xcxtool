@@ -179,7 +179,9 @@ class Comparator:
 
         return changes
 
-    def monitor_and_record(self, interval: float = 1.0):
+    def monitor_and_record(
+            self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True
+    ):
         """Monitor changes in and record with OBS.
 
         A JSON file will be stored next to the recorded video. The JSON file
@@ -203,7 +205,7 @@ class Comparator:
             print(e)
             return
         obs.start_record()
-        changes = self.monitor(interval)
+        changes = self.monitor(interval, quiet=quiet, aggregate_runs=aggregate_runs)
         response = obs.stop_record()
 
         vid_file = Path(response.output_path)
@@ -252,17 +254,48 @@ def match_json_to_location(monitor_delta: dict[str, Any]) -> locations.Location 
         print(f"Could not match name: {loc_name}")
         return None
 
-    offsets = list(monitor_delta["changes"])
-    if len(offsets) > 1:
-        offset = _get_offset_from_user(offsets)
+    changes = monitor_delta["changes"]
+    if isinstance(changes, dict):
+        offset, before, after = _get_changes_from_json_v1(changes)
     else:
-        offset = int(offsets[0])
+        offset, before, after = _get_changes_from_json_v2(changes)
 
-    before, after = monitor_delta["changes"][str(offset)]
     bit = after - before
     if bit <= 0:
         print(f"Invalid data change ({before:#04x} -> {after:#04x}")
     return location._replace(offset=offset, bit=bit)
+
+
+def _get_changes_from_json_v2(changes: list[dict]) -> tuple:
+    if len(changes) > 1:
+        change = _get_change_from_user(changes)
+    else:
+        change = changes[0]
+
+    return change["offset"], change["before"], change["after"]
+
+
+def _get_change_from_user(changes: list[dict]) -> dict:
+    for n, change in enumerate(changes):
+        print(f" {n+1:>4d}: {change['offset']:#08x}")
+    prompt = f"Multiple offsets in change,please select one (1 - {len(changes)}): "
+    choice = -1
+    while choice <1 or choice > len(changes):
+        try:
+            choice = int(input(prompt))
+        except ValueError:
+            continue
+    return changes[choice - 1]
+
+
+def _get_changes_from_json_v1(changes: dict[str: dict]) -> tuple[int, int, int]:
+    offsets = list(changes)
+    if len(offsets) > 1:
+        offset = _get_offset_from_user(offsets)
+    else:
+        offset = int(offsets[0])
+    before, after = changes[str(offset)]
+    return offset, before, after
 
 
 def _get_offset_from_user(offsets: list[int]) -> int:
@@ -287,7 +320,7 @@ if __name__ == "__main__":
         range(0x39108, 0x39168),  # BLADE greetings
         range(0x39174, 0x39180),  # BLADE level, points, division
         range(0x39540, 0x45D68),  # BLADE Affinity characters, BLADE medals, save time
-        # range(0x45d71, 0x45e18),  # Fast travel mysteries
+        range(0x45d71, 0x45e18),  # Fast travel mysteries
         range(0x45E40, 0x45E44),  # Play time
         range(0x480C0, 0x48274),  # FrontierNav layout
         range(0x48AC8, 0x48ACB),  # Field skill levels
@@ -296,5 +329,5 @@ if __name__ == "__main__":
     if reader is None:
         exit(1)
     comp = Comparator(reader, exclude=excs)
-    # comp.monitor_and_record()
+    # comp.monitor_and_record(aggregate_runs=False)
     comp.monitor()
