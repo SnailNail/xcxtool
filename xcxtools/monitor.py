@@ -180,7 +180,7 @@ class Comparator:
         return changes
 
     def monitor_and_record(
-            self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True
+        self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True
     ):
         """Monitor changes in and record with OBS.
 
@@ -280,7 +280,7 @@ def _get_change_from_user(changes: list[dict]) -> dict:
         print(f" {n+1:>4d}: {change['offset']:#08x}")
     prompt = f"Multiple offsets in change,please select one (1 - {len(changes)}): "
     choice = -1
-    while choice <1 or choice > len(changes):
+    while choice < 1 or choice > len(changes):
         try:
             choice = int(input(prompt))
         except ValueError:
@@ -288,7 +288,7 @@ def _get_change_from_user(changes: list[dict]) -> dict:
     return changes[choice - 1]
 
 
-def _get_changes_from_json_v1(changes: dict[str: dict]) -> tuple[int, int, int]:
+def _get_changes_from_json_v1(changes: dict[str, dict]) -> tuple[int, int, int]:
     offsets = list(changes)
     if len(offsets) > 1:
         offset = _get_offset_from_user(offsets)
@@ -298,7 +298,7 @@ def _get_changes_from_json_v1(changes: dict[str: dict]) -> tuple[int, int, int]:
     return offset, before, after
 
 
-def _get_offset_from_user(offsets: list[int]) -> int:
+def _get_offset_from_user(offsets: list[str]) -> int:
     for n, offset in enumerate(offsets):
         print(f" {n + 1:>4d}: {int(offset):#08x}")
     prompt = f"Multiple offsets in change, please select one (1 - {len(offsets)}): "
@@ -320,7 +320,7 @@ if __name__ == "__main__":
         range(0x39108, 0x39168),  # BLADE greetings
         range(0x39174, 0x39180),  # BLADE level, points, division
         range(0x39540, 0x45D68),  # BLADE Affinity characters, BLADE medals, save time
-        range(0x45d71, 0x45e18),  # Fast travel mysteries
+        range(0x45D71, 0x45E18),  # Fast travel mysteries
         range(0x45E40, 0x45E44),  # Play time
         range(0x480C0, 0x48274),  # FrontierNav layout
         range(0x48AC8, 0x48ACB),  # Field skill levels
