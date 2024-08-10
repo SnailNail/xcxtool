@@ -56,7 +56,9 @@ class CompareResult:
     time: pendulum.datetime
     changes: dict[int, MemoryDelta]
 
-    def format(self, datefmt: str = "%x %X", addrfmt: str = "#08x", valuefmt: str = "#04x") -> str:
+    def format(
+        self, datefmt: str = "%x %X", addrfmt: str = "#08x", valuefmt: str = "#04x"
+    ) -> str:
         out = f"{self.time:{datefmt}}\n"
         for addr, d in self.changes.items():
             out += f"  {addr:{addrfmt}}: {[format(i, valuefmt) for i in d.before]} -> {[format(i, valuefmt) for i in d.after]}\n"
@@ -66,7 +68,10 @@ class CompareResult:
         return {
             "datetime": str(self.time),
             "comment": "",
-            "changes": {offset: dataclasses.asdict(delta) for offset, delta in self.changes.items()},
+            "changes": {
+                offset: dataclasses.asdict(delta)
+                for offset, delta in self.changes.items()
+            },
         }
 
     def __bool__(self) -> bool:
@@ -125,7 +130,9 @@ class Comparator:
         self.previous = new_mem
         return CompareResult(now, deltas)
 
-    def monitor(self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True):
+    def monitor(
+        self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True
+    ):
         """Continuously compare memory states and interval seconds.
 
         If quiet is True, no output will be printed, only a dictionary of changes
@@ -191,7 +198,9 @@ class Comparator:
         obs_port = int(os.getenv("OBS_WEBSOCKET_PORT", 4455))
         obs_pass = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
         try:
-            obs = obsws_python.ReqClient(host=obs_host, port=obs_port, password=obs_pass, timeout=3)
+            obs = obsws_python.ReqClient(
+                host=obs_host, port=obs_port, password=obs_pass, timeout=3
+            )
         except Exception as e:
             print("Could not connect to OBS Websocket")
             print(e)
@@ -236,7 +245,7 @@ def process_locations_from_monitor_json(json_path: str) -> list[locations.Locati
 
 
 def match_json_to_location(monitor_delta: dict[str, Any]) -> locations.Location | None:
-    """Get a location from """
+    """Get a location from"""
     if not _locations_by_name:
         _locations_by_name.update((loc.name, loc) for loc in locations.locations)
 
@@ -272,19 +281,19 @@ def _get_offset_from_user(offsets: list[int]) -> int:
     return int(offsets[choice - 1])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     incs = [range(205952, 233736)]  # first big unknown block
     excs = [
-        range(0x0, 0xc620),  # Character & skell data
-        range(0xc820, 0xc82c),  # Miranium, credits, tickets
-        range(0xc850, 0x32228),  # Inventory,
+        range(0x0, 0xC620),  # Character & skell data
+        range(0xC820, 0xC82C),  # Miranium, credits, tickets
+        range(0xC850, 0x32228),  # Inventory,
         range(0x39108, 0x39168),  # BLADE greetings
         range(0x39174, 0x39180),  # BLADE level, points, division
-        range(0x39540, 0x45d68),  # BLADE Affinity characters, BLADE medals, save time
+        range(0x39540, 0x45D68),  # BLADE Affinity characters, BLADE medals, save time
         # range(0x45d71, 0x45e18),  # Fast travel mysteries
-        range(0x45e40, 0x45e44),  # Play time
-        range(0x480c0, 0x48274),  # FrontierNav layout
-        range(0x48ac8, 0x48acb),  # Field skill levels
+        range(0x45E40, 0x45E44),  # Play time
+        range(0x480C0, 0x48274),  # FrontierNav layout
+        range(0x48AC8, 0x48ACB),  # Field skill levels
     ]
     reader = connect_cemu()
     if reader is None:
