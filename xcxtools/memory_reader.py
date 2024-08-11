@@ -14,6 +14,8 @@ from xcxtools import savefiles
 
 class MemoryReader(typing.Protocol):
 
+    player_addr: int
+
     def read_memory(self, offset: int, length: int) -> bytes:
         """Read `length` bytes from `offset`, relative to `self.player`"""
 

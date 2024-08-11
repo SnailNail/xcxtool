@@ -75,7 +75,7 @@ class Comparator:
 
     def __init__(
         self,
-        reader: PymemReader,
+        reader: MemoryReader,
         include: list[range] = None,
         exclude: list[range] = None,
         initial_data: bytes = None,
@@ -88,9 +88,16 @@ class Comparator:
             self.initial = reader.read_memory(0, self.data_size)
         self.previous = self.initial
 
-    def compare(self) -> CompareResult:
+    def compare(self, other: bytes = None) -> CompareResult:
         now = pendulum.now("local")
-        mem = self._read()
+        if other is not None:
+            if len(other) != len(self.previous):
+                raise ValueError(
+                    f"Comparison data ({len(other)} bytes) must be the same length as previous data ({len(self.previous)} bytes)"
+                )
+            mem = other
+        else:
+            mem = self._read()
         deltas = []
         for offset, (before, after) in enumerate(zip(self.previous, mem)):
             if before != after and self._valid_offset(offset):
@@ -98,9 +105,16 @@ class Comparator:
         self.previous = mem
         return CompareResult(now, deltas)
 
-    def aggregate_compare(self) -> CompareResult:
+    def aggregate_compare(self, other: bytes = None) -> CompareResult:
         """WIP"""
-        new_mem = self._read()
+        if other is not None:
+            if len(other) != len(self.previous):
+                raise ValueError(
+                    f"Comparison data ({len(other)} bytes) must be the same length as previous data ({len(self.previous)} bytes)"
+                )
+            new_mem = other
+        else:
+            new_mem = self._read()
         deltas = []
         current_run = None
         now = pendulum.now()
