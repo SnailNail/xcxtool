@@ -1,4 +1,5 @@
 """Monitor Cemu process for changes"""
+
 import plumbum
 from plumbum import cli
 from obsws_python import ReqClient
@@ -9,6 +10,8 @@ from xcxtools.monitor import monitor
 
 class MonitorCemu(cli.Application):
     """Monitor Cemu process memory for changes"""
+
+    CALL_MAIN_IF_NESTED_COMMAND = False
 
     obs: ReqClient
     record: bool = cli.Flag(
