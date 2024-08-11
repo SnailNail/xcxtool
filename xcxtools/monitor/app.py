@@ -1,5 +1,5 @@
 """Monitor Cemu process for changes"""
-
+import plumbum
 from plumbum import cli
 from obsws_python import ReqClient
 
@@ -61,3 +61,12 @@ class MonitorCemu(cli.Application):
             host=self.obs_host, port=self.obs_port, password=self.obs_password
         )
         return obs
+
+
+@MonitorCemu.subcommand("process-json")
+class MonitorProcessJson(cli.Application):
+    """Process the json data produced when recording gameplay with monitoring"""
+
+    @cli.positional(cli.ExistingFile)
+    def main(self, json_path: plumbum.LocalPath):
+        monitor.process_locations_from_monitor_json(json_path)

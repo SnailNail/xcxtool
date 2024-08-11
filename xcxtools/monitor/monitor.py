@@ -3,6 +3,7 @@
 import dataclasses
 import json
 import time
+from os import PathLike
 from pathlib import Path
 from typing import Any
 
@@ -226,7 +227,7 @@ class Comparator:
         return True
 
 
-def process_locations_from_monitor_json(json_path: str) -> list[locations.Location]:
+def process_locations_from_monitor_json(json_path: PathLike) -> list[locations.Location]:
     with open(json_path) as f:
         data = json.load(f)
     found = 0
