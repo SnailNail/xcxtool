@@ -11,6 +11,7 @@ dependencies = [
     "rich >= 13.3.1",
     "Pymem >= 1.10.0",
     "pendulum >= 2.1.2",
+    "obsws-python >= 1.7.0"
 ]
 dynamic = ["version"]
 
