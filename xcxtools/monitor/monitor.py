@@ -2,20 +2,15 @@
 
 import dataclasses
 import json
-import os
 import time
 from pathlib import Path
 from typing import Any
 
-import dotenv
 import obsws_python
 import pendulum
 
-from xcxtools.memory_reader import PymemReader, connect_cemu
+from xcxtools.memory_reader import MemoryReader
 from xcxtools.data import locations
-
-
-dotenv.load_dotenv()
 
 
 _locations_by_name: dict[str, locations.Location] = {}
@@ -180,7 +175,12 @@ class Comparator:
         return changes
 
     def monitor_and_record(
-        self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True
+        self,
+        obs: obsws_python.ReqClient,
+        interval: float = 1.0,
+        *,
+        quiet: bool = False,
+        aggregate_runs: bool = True,
     ):
         """Monitor changes in and record with OBS.
 
@@ -188,22 +188,9 @@ class Comparator:
         will contain details of the changes, keyed to timestamps that should
         approximately be synchronised with the video.
 
-        OBS must be installed, running and set-up to record otherwise this
-        function will fail, perhaps unpredictably. OBS Websocket parameters
-        are read from the OBS_WEBSOCKET_{HOST|PORT|PASSWORD} environment
-        variables, or a .env file in the dotenv search path
+        The obs parameter must be a connected obsws client object, and OBS must
+        be installed, running and configured to record Cemu.
         """
-        obs_host = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
-        obs_port = int(os.getenv("OBS_WEBSOCKET_PORT", 4455))
-        obs_pass = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
-        try:
-            obs = obsws_python.ReqClient(
-                host=obs_host, port=obs_port, password=obs_pass, timeout=3
-            )
-        except Exception as e:
-            print("Could not connect to OBS Websocket")
-            print(e)
-            return
         obs.start_record()
         changes = self.monitor(interval, quiet=quiet, aggregate_runs=aggregate_runs)
         response = obs.stop_record()
