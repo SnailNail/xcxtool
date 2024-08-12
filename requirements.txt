@@ -5,3 +5,5 @@ FreeSimpleGUI~=5.1.0
 pyperclip~=1.8
 pendulum~=2.1
 rich~=13.3
+tomli~=2.0.1;python_version<"3.11"
+pytest~=7.2.1
