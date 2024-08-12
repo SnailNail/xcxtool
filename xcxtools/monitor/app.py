@@ -1,11 +1,18 @@
 """Monitor Cemu process for changes"""
+import json
+import os
 
 import plumbum
 from plumbum import cli
+import rich.console
 from obsws_python import ReqClient
 
 from xcxtools import memory_reader
 from xcxtools.monitor import monitor
+
+
+_console = rich.console.Console()
+rprint = _console.print
 
 
 class MonitorCemu(cli.Application):
@@ -42,7 +49,7 @@ class MonitorCemu(cli.Application):
             range(
                 0x39540, 0x45D68
             ),  # BLADE Affinity characters, BLADE medals, save time
-            range(0x45D71, 0x45E18),  # Fast travel mysteries
+            range(0x45D71, 0x45E3F),  # Fast travel mysteries (also updates when saving)
             range(0x45E40, 0x45E44),  # Play time
             range(0x480C0, 0x48274),  # FrontierNav layout
             range(0x48AC8, 0x48ACB),  # Field skill levels
@@ -70,6 +77,51 @@ class MonitorCemu(cli.Application):
 class MonitorProcessJson(cli.Application):
     """Process the json data produced when recording gameplay with monitoring"""
 
+    json_path: plumbum.LocalPath
+
+    annotate = cli.Flag(["a", "annotate"], False, excludes=["locations"], help="Annotate changes")
+    locations = cli.Flag(["l", "locations"], False, excludes=["annotate"], help="Extract locations")
+
     @cli.positional(cli.ExistingFile)
     def main(self, json_path: plumbum.LocalPath):
-        monitor.process_locations_from_monitor_json(json_path)
+        try:
+            self.json_path = json_path
+            if self.locations:
+                self.do_locations()
+            elif self.annotate:
+                self.do_annotations()
+            else:
+                print("Re-run with one of '--locations' or '--annotate'")
+        except KeyboardInterrupt:
+            print("Caught Ctrl-C, exiting (no changes will be saved)")
+
+    def do_locations(self):
+        monitor.process_locations_from_monitor_json(self.json_path)
+
+    def do_annotations(self):
+        original_stat = self.json_path.stat()
+        with open(self.json_path) as f:
+            change_data = json.load(f)
+        total_changes = len(change_data)
+
+        print(f"Annotating {total_changes} changes.")
+        print("Press Ctrl-C to exit without saving, enter Ctrl-Z to save and quit")
+
+        for n, (timestamp, changeset) in enumerate(change_data.items()):
+            memory_deltas = [monitor.MemoryDelta(**change) for change in changeset["changes"]]
+            rprint(f"[bold green]{timestamp}", f"({n}/{total_changes})")
+            for delta in memory_deltas:
+                rprint(f"  {delta}")
+            if current_comment := changeset.get("comment"):
+                rprint(f"[bold]Comment:[/] {current_comment}")
+            try:
+                comment = input("Annotation (enter to keep current): ")
+            except EOFError:
+                print("Caught Ctrl-Z, saving and exiting")
+                break
+            if comment:
+                changeset["comment"] = comment
+
+        with open(self.json_path, "w") as f:
+            json.dump(change_data, f, indent=2)
+        os.utime(self.json_path, (original_stat.st_atime, original_stat.st_mtime))
