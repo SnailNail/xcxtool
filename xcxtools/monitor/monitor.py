@@ -274,7 +274,7 @@ def _get_changes_from_json_v2(changes: list[dict]) -> tuple:
     else:
         change = changes[0]
 
-    return change["offset"], change["before"], change["after"]
+    return change["offset"], change["before"][0], change["after"][0]
 
 
 def _get_change_from_user(changes: list[dict]) -> dict:
