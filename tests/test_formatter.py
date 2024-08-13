@@ -1,8 +1,8 @@
-"""Tests for xcxtools.backup.formatter.ForgivingFormatter"""
+"""Tests for xcxtool.backup.formatter.ForgivingFormatter"""
 
 import pytest
 
-from xcxtools.backup.formatter import ForgivingFormatter
+from xcxtool.backup.formatter import ForgivingFormatter
 
 
 @pytest.fixture(scope="session")

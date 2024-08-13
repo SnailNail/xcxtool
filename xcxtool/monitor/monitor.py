@@ -10,8 +10,8 @@ from typing import Any
 import obsws_python
 import pendulum
 
-from xcxtools.memory_reader import MemoryReader
-from xcxtools.data import locations
+from xcxtool.memory_reader import MemoryReader
+from xcxtool.data import locations
 
 
 _locations_by_name: dict[str, locations.Location] = {}

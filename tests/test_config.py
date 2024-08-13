@@ -1,12 +1,12 @@
-"""Test cases for the xcxtools.config._FallbackDict class"""
+"""Test cases for the xcxtool.config._FallbackDict class"""
 
 import pytest
-import xcxtools.config.main
-from xcxtools.config import get, get_preferred
+import xcxtool.config.main
+from xcxtool.config import get, get_preferred
 
 
 # patch the config object
-xcxtools.config.main._config = {
+xcxtool.config.main._config = {
     "s1": {
         "case_1": "Case1",
         "case_d": "Case2",

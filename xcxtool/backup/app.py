@@ -95,7 +95,7 @@ class BackupSave(cli.Application):
     def _check_parent(self) -> bool:
         if self.parent:
             return True
-        print("This utility must be run via the main xcxtools application")
+        print("This utility must be run via the main xcxtool application")
         return False
 
     def _help_names(self):

@@ -9,7 +9,7 @@ import typing
 
 import pymem
 
-from xcxtools import savefiles
+from xcxtool import savefiles
 
 
 class MemoryReader(typing.Protocol):

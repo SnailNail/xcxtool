@@ -13,7 +13,7 @@ else:
 
 from plumbum import LocalPath
 
-from xcxtools.config.defaults import CONFIG_DEFAULTS
+from xcxtool.config.defaults import CONFIG_DEFAULTS
 
 
 __all__ = ["load_config", "get", "get_preferred"]

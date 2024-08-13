@@ -1,2 +1,2 @@
 """Tests for the range combining/consolidating function"""
-from xcxtools.monitor import *
+from xcxtool.monitor import *

@@ -5,8 +5,8 @@ from collections import Counter
 import plumbum
 from plumbum import cli, LocalPath
 
-from xcxtools import savefiles, config
-from xcxtools.probes import data
+from xcxtool import savefiles, config
+from xcxtool.probes import data
 
 
 class FrontierNavTool(cli.Application):

@@ -7,8 +7,8 @@ from plumbum import cli
 import rich.console
 from obsws_python import ReqClient
 
-from xcxtools import memory_reader
-from xcxtools.monitor import monitor
+from xcxtool import memory_reader
+from xcxtool.monitor import monitor
 
 
 _console = rich.console.Console()
