@@ -18,8 +18,13 @@ dynamic = ["version"]
 [project.scripts]
 xcxtool = "xcxtools.app:XCXToolsCLI.run"
 
-[tool.setuptools]
-packages = ["xcxtools"]
+[tool.setuptools.packages.find]
+include = ["xcxtools*"]
+# Including namespace packages to allow discovery of JSON files in package-data below
+namespaces = true
+
+[tool.setuptools.package-data]
+xcxtools = ["*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "xcxtools.VERSION"}
