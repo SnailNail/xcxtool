@@ -11,7 +11,7 @@ else:
     # noinspection PyPackageRequirements,SpellCheckingInspection
     import tomli as tomllib
 
-from plumbum import LocalPath
+from plumbum import local, LocalPath
 
 from xcxtool.config.defaults import CONFIG_DEFAULTS
 
@@ -21,14 +21,31 @@ __all__ = ["load_config", "get", "get_preferred"]
 _config = ChainMap(CONFIG_DEFAULTS)
 
 
-def load_config(config_file_path: LocalPath):
-    if not config_file_path.exists():
+def load_config(config_file: LocalPath = None):
+    if config_file is None:
+        config_file = find_config()
+    if config_file is None or not config_file.exists():
         print("Config file not found")
         return
-    print(f"Using config file: {config_file_path}")
-    with open(config_file_path, "rb") as f:
+    print(f"Using config file: {config_file}")
+    with open(config_file, "rb") as f:
         new_config = tomllib.load(f)
         _config.maps.insert(0, new_config)
+
+
+def find_config(config_file_name: str = "xcxtool.toml") -> LocalPath | None:
+    """Search for the default config file name in the current directory and
+    any parent directory.
+
+    Returns the first config file found as a LocalPath, or None
+    """
+    cwd = local.path(config_file_name)
+
+    for candidate in (p / config_file_name for p in cwd.parents):
+        if candidate.exists():
+            return candidate
+
+    return None
 
 
 def get(config_path: str, default: Any = None) -> Any:

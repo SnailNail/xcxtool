@@ -1,7 +1,5 @@
 """Main entry point for xcxtool"""
-import sys
 
-import pymem
 from plumbum import cli
 import plumbum
 
@@ -22,7 +20,6 @@ class XCXToolsCLI(cli.Application):
         "--config-path",
         plumbum.local.path,
         help="Use this file for config instead of the default",
-        default=plumbum.local.path("xcxtool.toml"),
     )
     cemu_process_name: str = cli.SwitchAttr(
         "--cemu-process-name",
