@@ -187,14 +187,15 @@ Settings should be place in the `[compare]` table of xcxtool.toml.
   in the comparison.
 * `after_file` (`--after`, `-a`): Use a specific file as the "after" state 
   in the comparison.
-* `include` (`--include`, `-i`): Define a range or set of ranges that should 
-  be included in the comparison. By default the whole file is included, but 
+* `include` (`--include`, `-i`): Define a subset or subsets of the save file 
+  to be included in the comparison. By default the whole file is included, but 
   any value specified here will override the default so only the specified 
   ranges are compared.
 
   In the config file, this should be an array of arrays, each subarray being 
-  a pair of integers. Each pair defines a range within the save file that 
-  will be compared. For example:
+  a pair of integers. Each pair defines the beginning and end of a range within 
+  the save file that  will be compared, relative to the start of the file. For 
+  example:
 
   ```toml
   [compare]
@@ -205,22 +206,40 @@ Settings should be place in the `[compare]` table of xcxtool.toml.
   ] 
   ```
 
-  By default the whole file is included, but any value specified here will
-  override the default so only the specified ranges are compared.
+  On the command line, the beginning and end values should be supplied as a comma 
+  separated pair, the option can be specified multiple times to include multiple
+  ranges. For example, the command below is equivalent to the config above:
 
-  On the command line, the arguments should be supplied as a comma separate
-  pair of values, and can be specified multiple times to include multiple
-  ranges. The command below is equivalent to the config above:
   ```shell
   xcxtool compare --include 0x30,0x100 -i 4056,5098
   ```
+
 * `exclude` (`--exclude`, `-x`): Define a set of ranges that should be
   excluded from the comparison. Exclusions are applied after inclusions, so
   they can be used to carve out exceptions in larger included ranges. The
   format of the config option and command line arguments is identical to
   `include`.
-* `json-filename` (`--json-filename`, `-j`: specify the filename of the JSON 
-  output.  
+* `--append-ranges`, `-p`: The normal behaviour of command line arguments, 
+  including `--include` and `--exclude`, is to completely replace the 
+  equivalent config setting. By setting this flag, any `--include` or 
+  `--exclude` arguments will be appended to the configured ranges, rather than 
+  replacing them.
+* `--monitor-cemu`, `-m` (no config file option): Continuously monitor Cemu 
+  memory, 
+  rather than comparing save files. In this mode, included/excluded ranges are 
+  relative to the start of in-memory save data. This means that the results of 
+  save data comparison and memory monitoring are directly comparable. Cemu 
+  must already be running and emulating the game when this command is run,
+  otherwise it will fail.
+* `--record`, `-r`: Simultaneously record gameplay while monitoring using OBS 
+  Studio. If `--monitor-cemu` is not set, this option will have no effect. As 
+  noted above, OBS Studio must be installed, configured and running and have 
+  the websocket server interface enabled.
+* `obs_host` (`--obs-host`): Set the hostname of the OBS Websocket. Defaults 
+  to `localhost`
+* `obs_port` (`--obs-port`): Set the OBS websocket port. Default is 4455
+* `obs_password` (`--obs-password`): Set the password to access the OBS 
+  websocket interface.
 
 [Cemu emulator]: https://cemu.info
 
