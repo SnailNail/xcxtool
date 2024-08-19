@@ -81,7 +81,7 @@ class BackupSave(cli.Application):
         if self.save_dir is not None:
             return self.save_dir
 
-        if configured := config.get("backup.save_directory") is not None:
+        if configured := config.get("backup.save_directory"):
             return plumbum.local.path(configured)
 
         if self.parent.cemu_save_dir is not None:

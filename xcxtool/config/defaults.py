@@ -7,7 +7,7 @@ CONFIG_DEFAULTS = {
         "region": "EUR"
     },
     "backup": {
-        "save_directory": r"C:\cemu\mlc01\usr\save\00050000\101c4d00\user\80000001",
+        "save_directory": r"",
         "backup_directory": r".\saves",
         "file_name": "backup-{datetime}",
     },
