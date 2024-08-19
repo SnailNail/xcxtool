@@ -108,30 +108,33 @@ class BackupSave(cli.Application):
         """Print available replacement tokens for --backup-path and --file"""
         preamble = ("The --backup-dir and --file arguments can contain replacement fields "
                     "e.g, 'fixed_{player_name}_also_fixed'. The available fields are "
-                    "listed below. Note that for most of these fields to work, the game "
-                    "must be emulated and running in Cemu.\n"
+                    "listed below.\n"
                     "\n"
-                    "If a field cannot be replaced, the program will exit with an error\n"
+                    "If a field cannot be replaced, it will be left in the name as-is.\n"
                     "\n"
                     "Python's formatting mini-language can be used to customise the appearance "
                     "of replacement fields. The type of each replacement field is indicated "
-                    "below, and the appropriate formatting codes can be used.")
+                    "below, and the appropriate formatting codes can be used. If a field name"
+                    "is not recognized, any formatting codes will be removed from the output.")
         token_descriptions = {
-            "{player_name}": "Name of the player character (str)",
+            "{name}": "Name of the player character (str)",
             "{level}": "Inner level of the player character (int)",
             "{exp}": "Total inner experience points for player character (int)",
             "{class}": "Player's combat class (str)",
             "{class_rank}": "Player's class rank (int)",
             "{class_exp}": "Total class exp of the player (int)",
-            "{play_time}": "Total playtime as seen on the main menu. "
-                           "The main menu must be open for this to be accurate; "
-                           "if the menu is not open the last displayed values will be used "
-                           "(str)",
-            "{save_date}": "Last modified date/time of the gamedata save file (pendulum.datetime)",
-            "{date}": "Current (calendar) date/time (pendulum.datetime)",
+            "{division}": "Player character's Division (str)",
+            "{blade_level}": "Player's BLADE level (int)",
+            "{play_time}": "Total playtime (as seen on the main menu) (str)",
+            "{save_date}": "In-game save date of the gamedata save file as YYYYMMDD (str)",
+            "{save_time": "In-game save time as hh-mm-ss (str)",
+            "{date}": "Current (calendar) date as YYYYMMDD (str)",
+            "{time": "Current time as hh-mm-ss (str)",
+            "{save_datetime}": "In-game save date and time (datetime.datetime)",
+            "{datetime}": "Current date and time (datetime.datetime)",
         }
         print(preamble)
         for token, description in token_descriptions.items():
-            rprint(f"  {token:14} {description}")
+            rprint(f"  [bold]{token:16}[/bold] {description}")
         sys.exit()
 
