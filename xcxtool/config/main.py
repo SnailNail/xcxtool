@@ -1,7 +1,6 @@
 """Main config module functions"""
 
 import sys
-from collections import ChainMap
 from typing import Any
 
 if sys.version_info >= (3, 11):
@@ -18,7 +17,7 @@ from xcxtool.config.defaults import CONFIG_DEFAULTS
 
 __all__ = ["load_config", "get", "get_preferred"]
 
-_config = ChainMap(CONFIG_DEFAULTS)
+_config = {}
 
 
 def load_config(config_file: LocalPath = None):
@@ -30,7 +29,7 @@ def load_config(config_file: LocalPath = None):
     print(f"Using config file: {config_file}")
     with open(config_file, "rb") as f:
         new_config = tomllib.load(f)
-        _config.maps.insert(0, new_config)
+        _config.update(new_config)
 
 
 def find_config(config_file_name: str = "xcxtool.toml") -> LocalPath | None:
@@ -58,11 +57,13 @@ def get(config_path: str, default: Any = None) -> Any:
     table, _, key = config_path.partition(".")
     if key == "":
         raise ValueError(f"no config key specified (got {config_path})")
-
     try:
-        return _config[table][key]
+        result = _config[table][key]
     except KeyError:
+        result = CONFIG_DEFAULTS.get(table).get(key)
+    if result is None:
         return default
+    return result
 
 
 def get_preferred(
