@@ -27,10 +27,26 @@ class_map = {
     15: "Blast Fencer",
     16: "Galactic Knight",
 }
+division_map = {
+    0: "none",
+    1: "Pathfinders",
+    2: "Interceptors",
+    3: "Harriers",
+    4: "Reclaimers",
+    5: "Curators",
+    6: "Prospectors",
+    7: "Outfitters",
+    8: "Mediators",
+}
 
 
 def get_datetime() -> dict[str, pendulum.DateTime]:
-    return {"datetime": pendulum.now(tz="local")}
+    now = pendulum.now("local")
+    return {
+        "date": format(now, "%Y%m%d"),
+        "time": format(now, "%H-%M-%S"),
+        "datetime": now,
+    }
 
 
 def get_mtime(file: plumbum.LocalPath) -> dict[str, pendulum.DateTime]:
@@ -46,20 +62,34 @@ def get_character_data(reader: MemoryReader) -> dict:
             return val[0]
         return val
 
+    blade_level, division = struct.unpack_from(
+        ">2I",
+        reader.read_memory(0x39120, 8),
+    )
+
     return {
-        "player_name": _get_name(buffer),
+        "name": _get_name(buffer),
         "level": unpack_value("B", 0x7a),
         "exp": unpack_value(">I", 0x7c),
         "class": class_map.get(unpack_value("B", 0x128), "Drifter"),
         "class_rank": unpack_value("B", 0x12a),
         "class_exp": unpack_value(">H", 0x12c),
+        "division": division_map.get(division, "none"),
+        "blade_level": blade_level,
     }
 
 
-def get_playtime(reader: MemoryReader) -> dict[str, game_timer.GameTimer]:
+def get_playtime(reader: MemoryReader) -> dict[str, str | pendulum.DateTime]:
     playtime_buffer = reader.read_memory(0x45e40 - 0x58, 4)
     playtime = game_timer.unpack_game_timer(playtime_buffer)
-    return {"play_time": playtime}
+    savetime_buffer = reader.read_memory(0x45D64 - 0x58, 4)
+    savetime = game_timer.unpack_save_timestamp(savetime_buffer).as_datetime()
+    return {
+        "play_time": f"{playtime.hours:03d}-{playtime.minutes:02d}-{playtime.seconds:02d}",
+        "save_date": format(savetime, "%Y%m%d"),
+        "save_time": format(savetime, "%H-%M-%S"),
+        "save_datetime": savetime,
+    }
 
 
 def _get_name(buffer: bytes) -> str:

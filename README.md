@@ -122,6 +122,7 @@ character properties refer to the player character:
 | `{time}`          | Current time                              | string   |
 | `{save_datetime}` | Last save datetime                        | datetime |
 | `{datetime}`      | Current datetime                          | datetime |
+| `{mtime}`         | Save file's last modified date and time   | datetime |
 
 ## `xcxtool fnav`
 

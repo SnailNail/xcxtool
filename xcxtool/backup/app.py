@@ -50,12 +50,12 @@ class BackupSave(cli.Application):
             rprint("[red]No save data path specified[/red]", file=sys.stderr)
             return 2
 
-        save_data_path = save_path.join("st", "game", "gamedata")
-        if not save_data_path.exists():
+        self.gamedata = save_path.join("st", "game", "gamedata")
+        if not self.gamedata.exists():
             rprint(f"[red]No save data found in {save_path}", file=sys.stderr)
             return 2
 
-        reader = memory_reader.SaveFileReader(save_data_path)
+        reader = memory_reader.SaveFileReader(self.gamedata)
         field_values = self.get_tokens(reader)
         archive_name = formatter.ForgivingFormatter().format(self.backup_name, **field_values)
 
@@ -132,9 +132,9 @@ class BackupSave(cli.Application):
             "{time": "Current time as hh-mm-ss (str)",
             "{save_datetime}": "In-game save date and time (datetime.datetime)",
             "{datetime}": "Current date and time (datetime.datetime)",
+            "{mtime}": "Last modified date and time of the save data file (datetime.datetime)",
         }
         print(preamble)
         for token, description in token_descriptions.items():
             rprint(f"  [bold]{token:16}[/bold] {description}")
         sys.exit()
-
