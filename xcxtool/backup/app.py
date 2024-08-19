@@ -3,7 +3,7 @@ import shutil
 import sys
 
 import plumbum
-from plumbum import local, cli
+from plumbum import cli
 from rich import print as rprint
 
 from .. import config, memory_reader
@@ -41,6 +41,9 @@ class BackupSave(cli.Application):
             print("This utility must be run via the main xcxtool application", file=sys.stderr)
             return 2
 
+        if self.backup_name is None:
+            self.backup_name = config.get("backup.file_name")
+
         backup_path = self.get_backup_path()
         if backup_path is None:
             return 2
@@ -62,14 +65,14 @@ class BackupSave(cli.Application):
         self.do_backup(archive_name, backup_path, save_path)
 
     def get_backup_path(self) -> plumbum.LocalPath | None:
-        if self.backup_dir is None:
+        if self.backup_dir is not None:
             return self.backup_dir
 
         backup_dir = plumbum.local.path(config.get("backup.backup_directory"))
-        if not self.backup_dir.exists():
+        if not backup_dir.exists():
             rprint(f"[red]Backup directory not found (got '{self.backup_dir}')")
             return
-        if not self.backup_dir.is_dir():
+        if not backup_dir.is_dir():
             rprint(f"[red]Backup path is not a directory (got '{self.backup_dir}')")
             return
         return backup_dir
@@ -82,7 +85,7 @@ class BackupSave(cli.Application):
             return plumbum.local.path(configured)
 
         if self.parent.cemu_save_dir is not None:
-            return self.parent.cemu_save_dir.parents[-1]
+            return self.parent.cemu_save_dir.parents[1]
 
     def get_tokens(self, gamedata_reader: memory_reader.MemoryReader) -> dict:
         field_values = {}
@@ -94,7 +97,7 @@ class BackupSave(cli.Application):
         return field_values
 
     def do_backup(self, backup_name: str, backup_dir: plumbum.LocalPath, save_dir: plumbum.LocalPath):
-        rprint(f"Backing up from: [green]{self.save_dir}[/green]\n"
+        rprint(f"Backing up from: [green]{save_dir}[/green]\n"
                f"to: [green]{backup_dir}[/green]\n"
                f"With filename [green]{backup_name}.zip[/green]")
         base_name = backup_dir / backup_name
