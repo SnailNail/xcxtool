@@ -3,6 +3,7 @@
 from collections import Counter
 
 import plumbum
+import sys
 from plumbum import cli, LocalPath
 
 from xcxtool import savefiles, config
@@ -27,11 +28,15 @@ class FrontierNavTool(cli.Application):
     )
     include_layout = cli.Flag(["-l", "--include-layout"], help="Include probe layout in output")
 
-    def main(self, target: cli.ExistingFile = None):
-        if target is None:
-            savedata = get_save_data_from_backup_folder()
-        else:
-            savedata = get_save_data_from_file(target)
+    @cli.positional(cli.ExistingFile)
+    def main(self, target: LocalPath = None):
+        if self.parent is None:
+            print("This application must be run as a subcommand of xcxtool")
+            return 2
+
+        savedata = self.get_save_data(target)
+        if savedata is None:
+            return 2
         self.inventory = get_probe_inventory(savedata[data.PROBE_INVENTORY_SLICE])
         self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
 
@@ -46,6 +51,19 @@ class FrontierNavTool(cli.Application):
     def exclude(self, exclude_set: str):
         """Exclude probe types from Xenoprobes inventory, e.g. "-x M1,R1\""""
         self._exclude = split_exclude(exclude_set)
+
+    def get_save_data(self, target: LocalPath | None) -> bytes | None:
+        """Get save data.
+
+        If a save file is specified on the command line, get that. Otherwise,
+        look for a save file in the configured MLC path.
+        """
+        if target is not None:
+            return get_save_data_from_file(target)
+        if self.parent.cemu_save_dir is not None:
+            return get_save_data_from_file(self.parent.cemu_save_dir.join("gamedata"))
+        print("No save data found, please specify a gamedata file, or configure Cemu"
+              "settings.", file=sys.stderr)
 
     def format_xenoprobes_inventory(self) -> str:
         """Build a xenoprobes inventory as a string"""
