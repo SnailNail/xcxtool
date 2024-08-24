@@ -37,7 +37,7 @@ class XCXToolsCLI(cli.Application):
         help="Path to Cemu's emulated NAND",
     )
     cemu_account_id: str = cli.SwitchAttr(
-        ["--cemu-accout-id"],
+        ["--cemu-account-id"],
         str,
         help="The PersistentID of the WiiU account in Cemu",
     )
