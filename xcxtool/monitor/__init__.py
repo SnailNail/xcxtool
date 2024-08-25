@@ -1,5 +1,4 @@
-from .app import MonitorCemu
+from .app import MonitorCemu, CompareSavedata
 
-# TODO: Implement include/exclude in config and CLI
 # TODO: Make one-shot comparison of save files the default mode
 # TODO: Fix monitoring interval

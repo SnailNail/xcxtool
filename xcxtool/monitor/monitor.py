@@ -83,11 +83,12 @@ class Comparator:
     ):
         reader.player_addr -= 0x58
         self.reader = reader
-        self.includes = include if include is not None else [range(0, self.data_size)]
-        self.excludes = exclude if exclude is not None else []
-        if initial_data is None:
-            self.initial = reader.read_memory(0, self.data_size)
-        self.previous = self.initial
+        self.includes = include if include else [range(0, self.data_size)]
+        self.excludes = exclude if exclude else []
+        if initial_data is not None:
+            self.previous = initial_data
+        else:
+            self.previous = reader.read_memory(0, self.data_size)
 
     def compare(self, other: bytes = None) -> CompareResult:
         now = pendulum.now("local")

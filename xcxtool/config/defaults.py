@@ -52,9 +52,13 @@ CONFIG_DEFAULTS = {
         "513": 2,
         "514": 1,
     },
-    "monitor": {
+    "compare": {
+        "include": [
+            [0x10, 0x5e710],
+        ],
+        "exclude": [],
         "obs_port": 4455,
         "obs_host": "localhost",
         "obs_password": "",
-    }
+    },
 }

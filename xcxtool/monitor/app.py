@@ -1,18 +1,132 @@
 """Monitor Cemu process for changes"""
 import json
 import os
+import sys
 
 import plumbum
 from plumbum import cli
 import rich.console
 from obsws_python import ReqClient
 
-from xcxtool import memory_reader
+from xcxtool import config, memory_reader
 from xcxtool.monitor import monitor
 
 
 _console = rich.console.Console()
 rprint = _console.print
+
+
+def _split_include_exclude(arg: str) -> range:
+    split = [int(part, 0) for part in arg.split(",")]
+    if len(split) == 1:
+        start, end = 0, split[0]
+    else:
+        start, end = split
+    return range(start, end)
+
+
+class CompareSavedata(cli.Application):
+    """Compare gamedata files for changes"""
+
+    DESCRIPTION_MORE = """Performs a simple byte-to-byte comparison of save data and 
+    outputs the result to stdout.
+    """
+
+    include: list[range] = cli.SwitchAttr(
+        ["-i", "--include"],
+        _split_include_exclude,
+        list=True,
+        help="Data file ranges to include in the comparison. Defaults to the whole file"
+    )
+    exclude: list[range] = cli.SwitchAttr(
+        ["-x", "--exclude"],
+        _split_include_exclude,
+        list=True,
+        help="Exclude ranges from the comparison",
+    )
+    save_directory: plumbum.LocalPath = cli.SwitchAttr(
+        ["-s", "--save-dir"],
+        cli.ExistingDirectory,
+        excludes=["--before", "--after"],
+        help="Override default save data folder",
+    )
+    before_file: plumbum.LocalPath = cli.SwitchAttr(
+        ["-b", "--before"],
+        cli.ExistingFile,
+        excludes=["--save-dir"],
+        help="Use a specific file as the 'before' state",
+    )
+    after_file: plumbum.LocalPath = cli.SwitchAttr(
+        ["-a", "--after"],
+        cli.ExistingFile,
+        excludes=["--save-dir"],
+        help="Use a specific file as the 'after' state",
+    )
+
+    def main(self):
+        if self.parent is None:
+            print("This app must be run as a subcommand of xcxtool")
+            return 2
+
+        self.get_include_and_exclude()
+        print("Include:", self.include)
+        print("Exclude:", self.exclude)
+
+        self.get_save_dir()
+
+        before_data = self.get_before_data()
+        after_reader = self.get_after()
+        if before_data is None or after_reader is None:
+            return 2
+        comparator = monitor.Comparator(after_reader, self.include, self.exclude, before_data)
+        changes = comparator.compare()
+        print(changes.format())
+
+    def get_include_and_exclude(self):
+        if not self.include:
+            self.include.extend(ranges_from_config("compare.include"))
+        if not self.exclude:
+            self.exclude.extend(ranges_from_config("compare.exclude"))
+
+    def get_save_dir(self):
+        if self.save_directory is not None:
+            return self
+        if configured := config.get("compare.save_directory"):
+            try:
+                self.save_directory = cli.ExistingDirectory(configured)
+            except ValueError:
+                print("Configured save_directory is not a directory")
+        self.save_directory = self.parent.cemu_save_dir
+
+    def get_before_data(self) -> bytes | None:
+        if self.before_file is None and self.save_directory is not None:
+            self.before_file = self.save_directory.join("gamedata_")
+        print("Before:", self.before_file)
+        try:
+            before = memory_reader.SaveFileReader(self.before_file)
+        except TypeError:  # The encryption key can't be inferred from the data:
+            print("Before save data could not be read", file=sys.stderr)
+        except FileNotFoundError:
+            print("Could not find savedata", self.before_file, file=sys.stderr)
+        else:
+            return before.data
+        return
+
+    def get_after(self) -> memory_reader.MemoryReader | None:
+        if self.after_file is None and self.save_directory is not None:
+            self.after_file = self.save_directory.join("gamedata")
+        print("After:", self.after_file)
+        try:
+            return memory_reader.SaveFileReader(self.after_file)
+        except TypeError:
+            print("Could not decrypt save data", self.after_file, file=sys.stderr)
+        except FileNotFoundError:
+            print("Could not find savedata", self.before_file, file=sys.stderr)
+        return
+
+
+def ranges_from_config(config_key):
+    return [range(*pair) for pair in config.get(config_key)]
 
 
 class MonitorCemu(cli.Application):
@@ -21,6 +135,19 @@ class MonitorCemu(cli.Application):
     CALL_MAIN_IF_NESTED_COMMAND = False
 
     obs: ReqClient
+
+    include: list[range] = cli.SwitchAttr(
+        ["-i", "--include"],
+        _split_include_exclude,
+        list=True,
+        help="Data file ranges to include in the comparison. Defaults to the whole file"
+    )
+    exclude: list[range] = cli.SwitchAttr(
+        ["-x", "--exclude"],
+        _split_include_exclude,
+        list=True,
+        help="Exclude ranges from the comparison",
+    )
     record: bool = cli.Flag(
         ["r", "record"], False, help="Record gameplay while monitoring"
     )
@@ -39,25 +166,11 @@ class MonitorCemu(cli.Application):
     )
 
     def main(self):
-        incs = [range(205952, 233736)]  # first big unknown block
-        excs = [
-            range(0x0, 0xC620),  # Character & skell data
-            range(0xC820, 0xC82C),  # Miranium, credits, tickets
-            range(0xC850, 0x32228),  # Inventory,
-            range(0x39108, 0x39168),  # BLADE greetings
-            range(0x39174, 0x39180),  # BLADE level, points, division
-            range(
-                0x39540, 0x45D68
-            ),  # BLADE Affinity characters, BLADE medals, save time
-            range(0x45D71, 0x45E3F),  # Fast travel mysteries (also updates when saving)
-            range(0x45E40, 0x45E44),  # Play time
-            range(0x480C0, 0x48274),  # FrontierNav layout
-            range(0x48AC8, 0x48ACB),  # Field skill levels
-        ]
         reader = memory_reader.connect_cemu()
         if reader is None:
             exit(1)
-        comp = monitor.Comparator(reader, exclude=excs)
+        self.get_include_and_exclude()
+        comp = monitor.Comparator(reader, include=self.include, exclude=self.exclude)
         if self.record:
             self.obs = self._get_obs_client()
             self.obs.start_record()
@@ -66,9 +179,17 @@ class MonitorCemu(cli.Application):
             comp.monitor()
         reader.close()
 
+    def get_include_and_exclude(self):
+        if not self.include:
+            self.include.extend(ranges_from_config("compare.include"))
+        if not self.exclude:
+            self.exclude.extend(ranges_from_config("compare.exclude"))
+
     def _get_obs_client(self):
         obs = ReqClient(
-            host=self.obs_host, port=self.obs_port, password=self.obs_password
+            host=config.get_preferred(self.obs_host, "compare.obs_host"),
+            port=config.get_preferred(self.obs_port, "compare.obs_port"),
+            password=config.get_preferred(self.obs_password, "compare.obs_password"),
         )
         return obs
 
