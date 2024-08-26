@@ -1,4 +1,5 @@
 """Monitor Cemu process for changes"""
+
 import json
 import os
 import sys
@@ -36,7 +37,7 @@ class CompareSavedata(cli.Application):
         ["-i", "--include"],
         _split_include_exclude,
         list=True,
-        help="Data file ranges to include in the comparison. Defaults to the whole file"
+        help="Data file ranges to include in the comparison. Defaults to the whole file",
     )
     exclude: list[range] = cli.SwitchAttr(
         ["-x", "--exclude"],
@@ -78,7 +79,9 @@ class CompareSavedata(cli.Application):
         after_reader = self.get_after()
         if before_data is None or after_reader is None:
             return 2
-        comparator = monitor.Comparator(after_reader, self.include, self.exclude, before_data)
+        comparator = monitor.Comparator(
+            after_reader, self.include, self.exclude, before_data
+        )
         changes = comparator.compare()
         print(changes.format())
 
@@ -140,7 +143,7 @@ class MonitorCemu(cli.Application):
         ["-i", "--include"],
         _split_include_exclude,
         list=True,
-        help="Data file ranges to include in the comparison. Defaults to the whole file"
+        help="Data file ranges to include in the comparison. Defaults to the whole file",
     )
     exclude: list[range] = cli.SwitchAttr(
         ["-x", "--exclude"],
@@ -200,8 +203,15 @@ class MonitorProcessJson(cli.Application):
 
     json_path: plumbum.LocalPath
 
-    annotate = cli.Flag(["a", "annotate"], False, excludes=["locations"], help="Annotate changes")
-    locations = cli.Flag(["l", "locations"], False, excludes=["annotate"], help="Extract locations")
+    annotate = cli.Flag(
+        ["a", "annotate"], False, excludes=["locations"], help="Annotate changes"
+    )
+    locations = cli.Flag(
+        ["l", "locations"], False, excludes=["annotate"], help="Extract locations"
+    )
+    decimal = cli.Flag(
+        ["d", "decimal"], False, excludes=["annotate"], help="Print decimal offsets & bits"
+    )
 
     @cli.positional(cli.ExistingFile)
     def main(self, json_path: plumbum.LocalPath):
@@ -217,7 +227,12 @@ class MonitorProcessJson(cli.Application):
             print("Caught Ctrl-C, exiting (no changes will be saved)")
 
     def do_locations(self):
-        monitor.process_locations_from_monitor_json(self.json_path)
+        locations = monitor.process_locations_from_monitor_json(self.json_path)
+        for location in sorted(locations, key=lambda l: l.location_id):
+            if self.decimal:
+                print(f"{location.location_id:>4d}: {location.offset} {location.bit:3d} {location.name}")
+            else:
+                print(location)
 
     def do_annotations(self):
         original_stat = self.json_path.stat()
@@ -229,7 +244,9 @@ class MonitorProcessJson(cli.Application):
         print("Press Ctrl-C to exit without saving, enter Ctrl-Z to save and quit")
 
         for n, (timestamp, changeset) in enumerate(change_data.items()):
-            memory_deltas = [monitor.MemoryDelta(**change) for change in changeset["changes"]]
+            memory_deltas = [
+                monitor.MemoryDelta(**change) for change in changeset["changes"]
+            ]
             rprint(f"[bold green]{timestamp}", f"({n}/{total_changes})")
             for delta in memory_deltas:
                 rprint(f"  {delta}")
