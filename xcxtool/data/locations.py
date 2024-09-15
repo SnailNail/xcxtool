@@ -71,6 +71,7 @@ locations = [
     Location(0x032660, 0x08, "FN Site 104", 88, 5, 0, 4),
     Location(0x032660, 0x10, "FN Site 106", 89, 5, 0, 5),
     Location(0x032660, 0x20, "Seaswept Ridge", 90, 1, 0, 0),
+    Location(0x032660, 0x40, "FN Site 108", 91, 5, 0, 6),
     Location(0x032660, 0x80, "FN Site 107", 92, 5, 0, 7),
     Location(0x032661, 0x01, "Sayram Northeast Plain", 77, 4, 0, 0),
     Location(0x032661, 0x02, "Shadow Rise", 78, 1, 0, 0),
@@ -283,7 +284,6 @@ locations = [
     Location(0x000000, 0x00, "Drop Shaft", 54, 1, 0, 0),
     Location(0x000000, 0x00, "Talon Rock Prominence", 74, 3, 2000, 0),
     Location(0x000000, 0x00, "Talon Rock Summit", 84, 4, 0, 0),
-    Location(0x000000, 0x00, "FN Site 108", 91, 5, 0, 6),
     Location(0x000000, 0x00, "FN Site 109", 93, 5, 0, 8),
     Location(0x000000, 0x00, "FN Site 110", 94, 5, 0, 9),
     # Noctilum
