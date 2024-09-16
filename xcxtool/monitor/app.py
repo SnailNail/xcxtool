@@ -228,11 +228,20 @@ class MonitorProcessJson(cli.Application):
 
     def do_locations(self):
         locations = monitor.process_locations_from_monitor_json(self.json_path)
+        max_len = 10
+        if self.decimal:
+            max_len = max(len(l.name) for l in locations)
+        else:
+            print("new_locations = [")
         for location in sorted(locations, key=lambda l: l.location_id):
             if self.decimal:
-                print(f"{location.location_id:>4d}: {location.offset} {location.bit:3d} {location.name}")
+                print(
+                    f"{location.name:{max_len}}  {location.location_id:>4d}: {location.offset} {location.bit:3d}"
+                )
             else:
-                print(location)
+                print(f"    {location},")
+        if not self.decimal:
+            print("]")
 
     def do_annotations(self):
         original_stat = self.json_path.stat()
