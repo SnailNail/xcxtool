@@ -375,7 +375,7 @@ locations = [
     Location(0x032685, 0x04, "Cauldros Gate", 370, 4, 0, 0),
     Location(0x032685, 0x08, "Capital Wreckage", 371, 1, 0, 0),
     Location(0x032685, 0x10, "O'rrh Sim Capital Remains", 372, 1, 0, 0),
-    Location(0x032685, 0x20, "O'rrh Sim Watchtowers", 373, 1, 0, 0, False),
+    Location(0x032685, 0x20, "O'rrh Sim Watchtowers", 373, 1, 0, 0),
     Location(0x032685, 0x40, "Far Isle of Tzu'o", 374, 4, 0, 0),
     Location(0x032685, 0x80, "FN Site 501", 375, 5, 0, 94),
     Location(0x032686, 0x01, "M'gando Volcanic Crater", 360, 3, 2000, 0),
