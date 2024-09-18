@@ -7,7 +7,7 @@ import plumbum
 from plumbum import cli
 
 from xcxtool.data import locations
-
+from xcxtool.memory_reader import SaveFileReader
 
 FOUND_LOCATIONS_START = 0x032658
 FOUND_LOCATIONS_END = 0x03269D
@@ -16,19 +16,22 @@ FOUND_LOCATIONS_END = 0x03269D
 class LocationTool(cli.Application):
     """Utility for viewing found (or not) locations."""
     data: bytes
-    locations = {(l.offset, l.bit): l for l in locations.locations}
+    found_locations: dict[tuple[int, int], bool]
+    locations_by_bit = {(l.offset, l.bit): l for l in locations.locations}
 
-    found = cli.Flag(["-f", "--found"], help="Show found locations")
-    not_found = cli.Flag(["-n", "--not-found"], help="show locations yet to be found")
+    found = cli.Flag(["-f", "--found"], help="Show found locations", excludes=["not-found"])
+    not_found = cli.Flag(["-n", "--not-found"], help="show locations yet to be found", excludes="found")
 
     @cli.positional(cli.ExistingFile)
     def main(self, file: plumbum.LocalPath = None):
         self.data = self.load_data(file)
+        self.found_locations = get_locations_from_save_data(self.data)
 
     def load_data(self, from_data: plumbum.LocalPath = None) -> bytes:
         if not from_data:
-            from_data = self.parent.cemu_save_dir
-        return from_data.read("rb")
+            from_data = self.parent.cemu_save_dir.join("gamedata")
+        reader = SaveFileReader(from_data)
+        return reader.data
 
 
 def get_locations_from_save_data(save_data: bytes) -> dict[tuple[int, int], bool]:
