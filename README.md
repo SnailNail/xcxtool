@@ -23,6 +23,8 @@ used with live data extracted directly from the emulated WiiU memory, via
     * [Configuration](#configuration-1)
   * [`xcxtool compare`](#xcxtool-compare)
     * [Configuration](#configuration-2)
+  * [`xcxtool monitor`](#xcxtool-monitor)
+    * [configuration](#configuration-3)
 <!-- TOC -->
 
 ## Configuration Overview
@@ -135,10 +137,11 @@ your current probe layout into the excellent [FrontierNav.net] probe simulation.
 The following settings should be placed in the `[fnav]` table of the settings
 file:
 
-* `sightseeing_spots`: define the number of found sightseeing spots at relevant
-  probe sites. See the config file sample for an example (TODO). In the
-  future it will be possible to automatically get this information from the
-  save data
+* `sightseeing_spots`: By default, discovered sightseeing spots are detected 
+  from the save data, but this can be overridden by setting a value here. 
+  Note that you can only assign as many sightseeing spots to a site as it 
+  would have naturally. Setting a negative value to a site will cause the 
+  setting to be ignored. 
 * `output_directory` (`--output-dir`, `-o`): save xenoprobes output to this
   director (defaults to the current working directory)
 * `exclude_probes` (`--exclude-probes` `-x`): Do not include these probe
@@ -168,15 +171,6 @@ and/or after states.
 
 The comparison is a simple naive byte-to-byte comparison and the output will
 be quite verbose if there are significant changes between save states.
-
-An alternative mode for this command is to directly monitor Cemu's process
-memory for changes in real time, while optionally recording a gameplay via
-OBS Studio. This will produce a simple log of changes in JSON format that
-can be processed later.
-
-For gameplay recording, OBS Studio must be installed, configured to record 
-Cemu and must have the Websocket interface enabled, and must be running when 
-the command is executed. OBS settings for xcxtool are described below.
 
 ### Configuration
 
@@ -225,17 +219,33 @@ Settings should be place in the `[compare]` table of xcxtool.toml.
   equivalent config setting. By setting this flag, any `--include` or 
   `--exclude` arguments will be appended to the configured ranges, rather than 
   replacing them.
-* `--monitor-cemu`, `-m` (no config file option): Continuously monitor Cemu 
-  memory, 
-  rather than comparing save files. In this mode, included/excluded ranges are 
-  relative to the start of in-memory save data. This means that the results of 
-  save data comparison and memory monitoring are directly comparable. Cemu 
-  must already be running and emulating the game when this command is run,
-  otherwise it will fail.
-* `--record`, `-r`: Simultaneously record gameplay while monitoring using OBS 
-  Studio. If `--monitor-cemu` is not set, this option will have no effect. As 
-  noted above, OBS Studio must be installed, configured and running and have 
-  the websocket server interface enabled.
+
+## `xcxtool monitor`
+Like `xcxtool compare`, but continuously monitor Cemu memory rather than 
+comparing save files. In this mode, included/excluded ranges are relative to 
+the start of in-memory save data. This means that the results of save data 
+comparison and memory monitoring are directly comparable. Cemu must already 
+be running and emulating the game when this command is run, otherwise it
+will fail.
+
+Optionally, gameplay can be recording simultaneously with monitoring via [OBS 
+Studio][OBS]. This will also produce a simple log of changes in JSON format 
+that can be processed later.
+
+For gameplay recording, OBS Studio must be installed, configured to record 
+Cemu and must have the Websocket interface enabled, and must be running when 
+the command is executed. OBS settings for xcxtool are described below.
+
+### configuration
+Settings should be in the `[monitor]` table.
+
+* The `include` and `exclude` config options (and their command-line 
+  equivalents) have the same meaning an affect as in the `compare` 
+  subcommand, so see the documentation there for details
+* `--record`, `-r`: Only available on the command line. Simultaneously record 
+  gameplay while monitoring using OBS Studio. As noted above, OBS Studio 
+  must be installed, configured and running and have the websocket server 
+  interface enabled.
 * `obs_host` (`--obs-host`): Set the hostname of the OBS Websocket. Defaults 
   to `localhost`
 * `obs_port` (`--obs-port`): Set the OBS websocket port. Default is 4455
@@ -253,3 +263,5 @@ Settings should be place in the `[compare]` table of xcxtool.toml.
 [xenoprobes]: https://github.com/minneyar/xenoprobes
 
 [FrontierNav.net]: https://frontiernav.net/explore/xenoblade-chronicles-x
+
+[OBS]: https://obsproject.com

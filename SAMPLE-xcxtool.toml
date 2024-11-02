@@ -1,0 +1,77 @@
+# Sample xcxtool.toml showcasing the available options and default values
+# See https://toml.io/en/ for details of TOML syntax
+
+# The xcxtool table holds global config that affects all subcommands
+[xcxtool]
+# cemu_process_name is used by commands that read directly from cemu's memory
+cemu_process_name = "cemu.exe"
+
+# The following three options are used to build a default save data path
+nand_root = 'C:\Games\cemu\mlc0'
+persistent_id = "80000003"
+region = "USA"  # can be one of "EUR" (the default), "USA" or "JAP"
+
+[backup]
+# Override the default save data path; empty by default
+save_directory = 'C:\games\xcx_save_data'
+# Back up save data to the following directory; defaults to '.\saves'
+backup_directory = 'C:\games\xcx_backup_saves'
+# Use the following file name template for backups. See the README for details
+# of the available tokens
+file_name = "{play_time} {name} Level {level}"
+
+[fnav]
+# Save generated files to this directory
+output_directory = 'C:\xenoprobes'
+# Ignore the following probe types when constructing probe inventories
+exclude_probes = ["M1", "M2", "R1"]
+
+[fnav.sightseeing_spots]
+# Found sightseeing spots are automatically detected; use entries in this table
+# to override the number of found spots for sites which have them.
+
+# Sites are identified by number, which must be quoted per the TOML spec
+"103" = 1
+# Setting a higher numner than the maximum for a site is allowed, but will be
+# capped to the maximum
+"214" = 3  # equivalent to "214" = 2
+# Setting a value to a site which does not normally have sightseeing spots has
+# no effect
+"301" = 1
+# Setting a negative value (the default) will cause the value from save data to
+# be used
+"404" = -1
+
+[compare]
+# has the same effect as backup.save_directory
+save_directory = 'C:\games\xcx_save_data'
+# The gamedata_ and gamedata files in save_directory are used as the
+# basis of comparison, unless either or both the following 2 options are set
+before_file = 'C:\my_custom_save_data\before.bin'
+after_file = 'C:\my_custom_save_data\after.bin'
+# use the include and exclude options to fine-tune which regions of the save
+# file are compared
+include = [
+  # [start, end],
+  [0x30, 0x100],
+  [4056, 5098],
+]
+exclude = [
+    [0x35, 0x50],
+    [5000, 5010],
+]
+[monitor]
+# The include and exclude directives have the same meaning and affect as the
+# compare command
+include = [
+  # [start, end],
+  [0x30, 0x100],
+  [4056, 5098],
+]
+exclude = [
+    [0x35, 0x50],
+    [5000, 5010],
+]
+obs_host = "localhost"
+obs_port = 4455
+obs_password = "MySuperSecretPassw0rd"
