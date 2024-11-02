@@ -27,7 +27,9 @@ class FrontierNavTool(cli.Application):
     include_inventory = cli.Flag(
         ["-i", "--include-inventory"], help="Include probe inventory in output"
     )
-    include_layout = cli.Flag(["-l", "--include-layout"], help="Include probe layout in output")
+    include_layout = cli.Flag(
+        ["-l", "--include-layout"], help="Include probe layout in output"
+    )
 
     @cli.positional(cli.ExistingFile)
     def main(self, target: LocalPath = None):
@@ -51,7 +53,7 @@ class FrontierNavTool(cli.Application):
 
     @cli.switch(["-x", "--exclude"], str, argname="PROBES")
     def exclude(self, exclude_set: str):
-        """Exclude probe types from Xenoprobes inventory, e.g. "-x M1,R1\""""
+        """Exclude probe types from Xenoprobes inventory, e.g. "-x M1,R1\" """
         self._exclude = split_exclude(exclude_set)
 
     def get_save_data(self, target: LocalPath | None) -> bytes | None:
@@ -64,8 +66,11 @@ class FrontierNavTool(cli.Application):
             return get_save_data_from_file(target)
         if self.parent.cemu_save_dir is not None:
             return get_save_data_from_file(self.parent.cemu_save_dir.join("gamedata"))
-        print("No save data found, please specify a gamedata file, or configure Cemu"
-              "settings.", file=sys.stderr)
+        print(
+            "No save data found, please specify a gamedata file, or configure Cemu"
+            "settings.",
+            file=sys.stderr,
+        )
 
     def format_xenoprobes_inventory(self) -> str:
         """Build a xenoprobes inventory as a string"""
@@ -76,14 +81,18 @@ class FrontierNavTool(cli.Application):
             if not probe.xenoprobes_name:
                 continue
             enabled = self._include_in_inventory(probe)
-            inventory += line_fmt.format(enabled=enabled, type=probe.xenoprobes_name, quantity=quantity)
+            inventory += line_fmt.format(
+                enabled=enabled, type=probe.xenoprobes_name, quantity=quantity
+            )
 
         return inventory
 
     def format_xenoprobes_sites(self) -> str:
         """Build a xenoprobes sites.csv as a string"""
         sites = "# sites.csv\n"
-        for site, probe in sorted(self.sites.items(), key=lambda t: t[0].xenoprobes_name):
+        for site, probe in sorted(
+            self.sites.items(), key=lambda t: t[0].xenoprobes_name
+        ):
             if site.game_name == "skip":
                 continue
             sites += self._format_site_row(site, probe)
@@ -121,7 +130,9 @@ class FrontierNavTool(cli.Application):
 
     def _get_spots_for_site(self, site: data.ProbeSite) -> list[int]:
         found_spots = [s for s in site.sightseeing_spots if s in self.spots]
-        configured_spots: int = config.get(f"fnav.sightseeing_spots").get(site.xenoprobes_name, -1)
+        configured_spots: int = config.get(f"fnav.sightseeing_spots").get(
+            site.xenoprobes_name, -1
+        )
         if configured_spots > len(site.sightseeing_spots):
             configured_spots = len(site.sightseeing_spots)
 
