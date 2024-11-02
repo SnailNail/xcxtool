@@ -111,7 +111,7 @@ class FrontierNavTool(cli.Application):
         line_fmt = "{locked}{site:xrow}\n"
         locked = "#" if probe.type_id == 255 else ""
 
-        found_spots = config.get(f"sightseeing_spots.{site.xenoprobes_name}", 0)
+        found_spots = config.get(f"fnav.sightseeing_spots.{site.xenoprobes_name}", 0)
         if found_spots < site.max_sightseeing_spots:
             site = site._replace(max_sightseeing_spots=found_spots)
 
