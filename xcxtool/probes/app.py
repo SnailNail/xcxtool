@@ -111,7 +111,7 @@ class FrontierNavTool(cli.Application):
 
     def _format_site_row(self, site: data.ProbeSite, probe: data.Probe) -> str:
         line_fmt = "{locked}{site:xrow}\n"
-        locked = "#" if probe.type_id == 255 else ""
+        locked = "#" if probe.type_id == 254 else ""
 
         found_spots = tuple(self._get_spots_for_site(site))
         if found_spots != site.sightseeing_spots:
