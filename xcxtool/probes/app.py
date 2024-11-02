@@ -20,6 +20,7 @@ class FrontierNavTool(cli.Application):
 
     inventory: Counter[data.Probe]
     sites: dict[data.ProbeSite, data.Probe]
+    spots: set[int]
     _exclude: set = set()
 
     include_sites = cli.Flag(["-s", "--include-sites"], help="Include sites in output")
@@ -39,6 +40,7 @@ class FrontierNavTool(cli.Application):
             return 2
         self.inventory = get_probe_inventory(savedata[data.PROBE_INVENTORY_SLICE])
         self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
+        self.spots = get_sightseeing_spots(savedata[data.LOCATIONS_SLICE])
 
         if self.include_inventory:
             print(self.format_xenoprobes_inventory())
@@ -111,11 +113,21 @@ class FrontierNavTool(cli.Application):
         line_fmt = "{locked}{site:xrow}\n"
         locked = "#" if probe.type_id == 255 else ""
 
-        found_spots = config.get(f"fnav.sightseeing_spots.{site.xenoprobes_name}", 0)
-        if found_spots < site.max_sightseeing_spots:
-            site = site._replace(max_sightseeing_spots=found_spots)
+        found_spots = tuple(self._get_spots_for_site(site))
+        if found_spots != site.sightseeing_spots:
+            site = site._replace(sightseeing_spots=found_spots)
 
         return line_fmt.format(locked=locked, site=site)
+
+    def _get_spots_for_site(self, site: data.ProbeSite) -> list[int]:
+        found_spots = [s for s in site.sightseeing_spots if s in self.spots]
+        configured_spots: int = config.get(f"fnav.sightseeing_spots").get(site.xenoprobes_name, -1)
+        if configured_spots > len(site.sightseeing_spots):
+            configured_spots = len(site.sightseeing_spots)
+
+        if configured_spots > -1:
+            return list(range(configured_spots))
+        return found_spots
 
 
 def get_save_data_from_file(file_path: LocalPath) -> bytes:
@@ -164,6 +176,16 @@ def get_installed_probes(probe_sites_buffer: bytes) -> dict[data.ProbeSite, data
     for index, installed_type in enumerate(installed):
         sites[data.ProbeSite.from_id(index)] = data.Probe.from_id(installed_type)
     return sites
+
+
+def get_sightseeing_spots(locations_buffer: bytes) -> set[int]:
+    """Get a set of location IDs for found sightseeing spots."""
+    spots = set()
+    for location_id, offset, bit in data.sightseeing_spots:
+        if locations_buffer[offset] & bit:
+            spots.add(location_id)
+
+    return spots
 
 
 def split_exclude(exclude_arg: str) -> set[str]:
