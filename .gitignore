@@ -1,5 +1,6 @@
 /xcxtool.toml
 sample_data/
+xcxtool/data/json/*.json
 
 ### Python template
 # Byte-compiled / optimized / DLL files
