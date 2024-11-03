@@ -5,7 +5,7 @@ import struct
 import pendulum
 import plumbum
 
-from ..memory_reader import MemoryReader
+from ..memory_reader import SaveDataReader
 from .. import game_timer
 
 
@@ -53,8 +53,8 @@ def get_mtime(file: plumbum.LocalPath) -> dict[str, pendulum.DateTime]:
     return {"save_date": pendulum.from_timestamp(file.stat().st_mtime, tz="local")}
 
 
-def get_character_data(reader: MemoryReader) -> dict:
-    buffer = reader.read_memory(0, 1404)
+def get_character_data(reader: SaveDataReader) -> dict:
+    buffer = reader.read_memory(88, 1404)
 
     def unpack_value(fmt: str, offset: int):
         val = struct.unpack_from(fmt, buffer, offset)
@@ -64,7 +64,7 @@ def get_character_data(reader: MemoryReader) -> dict:
 
     blade_level, division = struct.unpack_from(
         ">2I",
-        reader.read_memory(0x39120, 8),
+        reader.read_memory(0x39178, 8),
     )
 
     return {
@@ -79,10 +79,10 @@ def get_character_data(reader: MemoryReader) -> dict:
     }
 
 
-def get_playtime(reader: MemoryReader) -> dict[str, str | pendulum.DateTime]:
-    playtime_buffer = reader.read_memory(0x45e40 - 0x58, 4)
+def get_playtime(reader: SaveDataReader) -> dict[str, str | pendulum.DateTime]:
+    playtime_buffer = reader.read_memory(0x45e40, 4)
     playtime = game_timer.unpack_game_timer(playtime_buffer)
-    savetime_buffer = reader.read_memory(0x45D64 - 0x58, 4)
+    savetime_buffer = reader.read_memory(0x45d64, 4)
     savetime = game_timer.unpack_save_timestamp(savetime_buffer).as_datetime()
     return {
         "play_time": f"{playtime.hours:03d}-{playtime.minutes:02d}-{playtime.seconds:02d}",

@@ -10,7 +10,7 @@ from typing import Any
 import obsws_python
 import pendulum
 
-from xcxtool.memory_reader import MemoryReader
+from xcxtool.memory_reader import SaveDataReader
 from xcxtool.data import locations
 
 
@@ -76,12 +76,11 @@ class Comparator:
 
     def __init__(
         self,
-        reader: MemoryReader,
+        reader: SaveDataReader,
         include: list[range] = None,
         exclude: list[range] = None,
         initial_data: bytes = None,
     ):
-        reader.player_addr -= 0x58
         self.reader = reader
         self.includes = include if include else [range(0, self.data_size)]
         self.excludes = exclude if exclude else []

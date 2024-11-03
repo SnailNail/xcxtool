@@ -3,6 +3,7 @@
 Initial implementation uses Pymem to access Cemu's memory. It may be possible
 to use TCP Gecko to read the game running on a real WiiU in the future.
 """
+
 import os
 import sys
 import typing
@@ -12,25 +13,30 @@ import pymem
 from xcxtool import savefiles
 
 
-class MemoryReader(typing.Protocol):
+class SaveDataReader(typing.Protocol):
 
-    player_addr: int
+    data_start: int
 
     def read_memory(self, offset: int, length: int) -> bytes:
-        """Read `length` bytes from `offset`, relative to `self.player`"""
+        """Read `length` bytes from `offset`, relative to `self.data_start`"""
 
 
 class PymemReader:
-    def __init__(self, reader: pymem.Pymem):
+    def __init__(
+        self,
+        reader: pymem.Pymem,
+        anchor_pattern: bytes = b"Nagi.{2804}Lao",
+        anchor_offset: int = -0x5D4,
+    ):
         self.pymem = reader
-        nagi_addr = reader.pattern_scan_all(b"Nagi.{2804}Lao")
-        if nagi_addr is None:
-            print("Player data not found", file=sys.stderr)
-            raise ValueError("Player data not found")
-        self.player_addr = nagi_addr - 0x57c
+        anchor_addr = reader.pattern_scan_all(anchor_pattern)
+        if anchor_addr is None:
+            print("Anchor pattern not found", file=sys.stderr)
+            raise ValueError("Save data not found")
+        self.data_start = anchor_addr + anchor_offset
 
     def read_memory(self, offset: int, length: int) -> bytes:
-        return self.pymem.read_bytes(self.player_addr + offset, length)
+        return self.pymem.read_bytes(self.data_start + offset, length)
 
     def close(self):
         self.pymem.close_process()
@@ -38,15 +44,16 @@ class PymemReader:
 
 class SaveFileReader:
     """Read data from a XCX save file (gamedata)"""
+
     def __init__(self, save_file: str | os.PathLike):
         with open(save_file, "rb") as f:
             data = f.read()
         key = savefiles.guess_key(data)
         self.data = savefiles.apply_key(data, key)
-        self.player_addr = 0x58
+        self.data_start = 0
 
     def read_memory(self, offset: int, length: int) -> bytes:
-        start = offset + self.player_addr
+        start = offset + self.data_start
         end = start + length
         return self.data[start:end]
 

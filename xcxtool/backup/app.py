@@ -87,7 +87,7 @@ class BackupSave(cli.Application):
         if self.parent.cemu_save_dir is not None:
             return self.parent.cemu_save_dir.parents[1]
 
-    def get_tokens(self, gamedata_reader: memory_reader.MemoryReader) -> dict:
+    def get_tokens(self, gamedata_reader: memory_reader.SaveDataReader) -> dict:
         field_values = {}
         field_values.update(tokens.get_datetime())
         field_values.update(tokens.get_mtime(self.gamedata))

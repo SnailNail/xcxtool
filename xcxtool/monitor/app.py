@@ -115,7 +115,7 @@ class CompareSavedata(cli.Application):
             return before.data
         return
 
-    def get_after(self) -> memory_reader.MemoryReader | None:
+    def get_after(self) -> memory_reader.SaveDataReader | None:
         if self.after_file is None and self.save_directory is not None:
             self.after_file = self.save_directory.join("gamedata")
         print("After:", self.after_file)
