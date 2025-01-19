@@ -32,6 +32,7 @@ class Probe(NamedTuple):
     type_id: int
     game_name: str
     xenoprobes_name: str
+    frontiernav_type: int
 
     @staticmethod
     def from_id(type_id: int) -> "Probe":
@@ -85,33 +86,33 @@ def probe_and_quantity_from_bytes(buffer: bytes) -> tuple[Probe, int]:
 
 
 _probe_types = {
-    1: Probe(1, "Basic Probe", "BA"),
-    2: Probe(2, "Mining Probe G1", "M1"),
-    3: Probe(3, "Mining Probe G2", "M2"),
-    4: Probe(4, "Mining Probe G3", "M3"),
-    5: Probe(5, "Mining Probe G4", "M4"),
-    6: Probe(6, "Mining Probe G5", "M5"),
-    7: Probe(7, "Mining Probe G6", "M6"),
-    8: Probe(8, "Mining Probe G7", "M7"),
-    9: Probe(9, "Mining Probe G8", "M8"),
-    10: Probe(10, "Mining Probe G9", "M9"),
-    11: Probe(11, "Mining Probe G10", "M10"),
-    14: Probe(14, "Research Probe G1", "R1"),
-    15: Probe(15, "Research Probe G2", "R2"),
-    16: Probe(16, "Research Probe G3", "R3"),
-    17: Probe(17, "Research Probe G4", "R4"),
-    18: Probe(18, "Research Probe G5", "R5"),
-    19: Probe(19, "Research Probe G6", "R6"),
-    22: Probe(22, "Booster Probe G1", "B1"),
-    23: Probe(23, "Booster Probe G2", "B2"),
-    26: Probe(26, "Storage Probe", "S"),
-    29: Probe(29, "Duplicator Probe", "D"),
-    30: Probe(30, "Fuel Recovery Probe", "FR"),
-    31: Probe(31, "Melee Attack Probe", "MA"),
-    32: Probe(32, "Ranged Attack Probe", "RA"),
-    33: Probe(33, "EZ Debuff Probe", "ED"),
-    34: Probe(34, "Attribute Resistance Probe", "AR"),
-    254: Probe(254, "[LOCKED]", "XX"),
+    1: Probe(1, "Basic Probe", "BA", 1),
+    2: Probe(2, "Mining Probe G1", "M1", 2),
+    3: Probe(3, "Mining Probe G2", "M2", 3),
+    4: Probe(4, "Mining Probe G3", "M3", 4),
+    5: Probe(5, "Mining Probe G4", "M4", 5),
+    6: Probe(6, "Mining Probe G5", "M5", 6),
+    7: Probe(7, "Mining Probe G6", "M6", 7),
+    8: Probe(8, "Mining Probe G7", "M7", 8),
+    9: Probe(9, "Mining Probe G8", "M8", 9),
+    10: Probe(10, "Mining Probe G9", "M9", 10),
+    11: Probe(11, "Mining Probe G10", "M10", 11),
+    14: Probe(14, "Research Probe G1", "R1", 12),
+    15: Probe(15, "Research Probe G2", "R2", 13),
+    16: Probe(16, "Research Probe G3", "R3", 14),
+    17: Probe(17, "Research Probe G4", "R4", 15),
+    18: Probe(18, "Research Probe G5", "R5", 16),
+    19: Probe(19, "Research Probe G6", "R6", 17),
+    22: Probe(22, "Booster Probe G1", "B1", 18),
+    23: Probe(23, "Booster Probe G2", "B2", 19),
+    26: Probe(26, "Storage Probe", "S", 20),
+    29: Probe(29, "Duplicator Probe", "D", 21),
+    30: Probe(30, "Fuel Recovery Probe", "FR", 22),
+    31: Probe(31, "Melee Attack Probe", "MA", 22),
+    32: Probe(32, "Ranged Attack Probe", "RA", 22),
+    33: Probe(33, "EZ Debuff Probe", "ED", 22),
+    34: Probe(34, "Attribute Resistance Probe", "AR", 22),
+    254: Probe(254, "[LOCKED]", "XX", 0),
 }
 
 _sites_defaults = {

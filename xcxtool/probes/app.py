@@ -1,12 +1,13 @@
 """Subcommand for getting probe data from a save file"""
 
+import sys
+import webbrowser
 from collections import Counter
 
 import plumbum
-import sys
-from plumbum import cli, LocalPath
+from plumbum import LocalPath, cli
 
-from xcxtool import savefiles, config
+from xcxtool import config, savefiles
 from xcxtool.probes import data
 
 
@@ -51,6 +52,11 @@ class FrontierNavTool(cli.Application):
         help="Print the command output to the console and write to files.",
         group="Output control",
     )
+    frontiernav = cli.Flag(
+        ["-j", "--frontiernav"],
+        help="Attempt to open the current probe layout in the FrontierNav.net probe simulation",
+        group="Output data",
+    )
 
     @cli.positional(cli.ExistingFile)
     def main(self, target: LocalPath = None):
@@ -65,7 +71,7 @@ class FrontierNavTool(cli.Application):
         self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
         self.spots = get_sightseeing_spots(savedata[data.LOCATIONS_SLICE])
 
-        if not any((self.include_inventory, self.include_sites, self.include_layout)):
+        if not any((self.include_inventory, self.include_sites, self.include_layout, self.frontiernav)):
             self.include_inventory = True
             self.include_sites = True
 
@@ -75,6 +81,8 @@ class FrontierNavTool(cli.Application):
             self.do_output(self.format_xenoprobes_sites(), "sites.csv")
         if self.include_layout:
             self.do_output(self.format_xenoprobes_setup(), "layout.csv")
+        if self.frontiernav:
+            self.do_frontiernav()
 
     @cli.switch(["-x", "--exclude"], str, argname="PROBES", group="Input")
     def exclude(self, exclude_set: str):
@@ -144,6 +152,20 @@ class FrontierNavTool(cli.Application):
         if not self.print or self.tee:
             out_file: plumbum.LocalPath = self.output_dir / file_name
             out_file.write(file_data, "utf8")
+
+    def format_frontiernav_url(self) -> str:
+        base_url = "https://frontiernav.net/wiki/xenoblade-chronicles-x/visualisations/maps/probe-guides/My%20Current%20Layout?map="
+        probe_layout = [f"{site.xenoprobes_name}-{probe.frontiernav_type}" for site, probe in self.sites.items()]
+        return base_url + "~".join(probe_layout)
+
+    def do_frontiernav(self) -> None:
+        url = self.format_frontiernav_url()
+        if self.print or self.tee:
+            print("# Frontiernav URL")
+            print(url)
+        if not self.print or self.tee:
+            webbrowser.open_new_tab(url)
+
 
     def _include_in_inventory(self, probe: data.Probe) -> str:
         if probe.xenoprobes_name in self._exclude:

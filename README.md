@@ -136,9 +136,9 @@ By default, the command will read the save data in the configured save
 directory, and output a sites.csv and inventory.csv to the current working 
 directory.
 
-The `--sites`, `--inventory` and `--layout` options to control which files 
-are output. if any of those options are specified, only those files will be 
-output
+The `--sites`, `--inventory`, `--layout` and `--frontiernav` options control 
+which files are output. if any of those options are specified, only those 
+files will be output
 
 ### Configuration
 
@@ -151,7 +151,7 @@ file:
   would have naturally. Setting a negative value to a site will cause the 
   setting to be ignored. 
 * `output_directory` (`--output-dir`, `-o`): save xenoprobes output to this
-  director (defaults to the current working directory)
+  directory (defaults to the current working directory)
 * `exclude_probes` (`--exclude-probes` `-x`): Do not include these probe
   types in inventory output. Should be a array of strings in the config file,
   or a comma-separate list on the command line (e.g. `-x M1,R1`)
