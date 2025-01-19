@@ -132,6 +132,14 @@ Read FrontierNav layout and probe inventory from save data. The primary purpose
 of this command is to generate config files for [xenoprobes], or to quickly load
 your current probe layout into the excellent [FrontierNav.net] probe simulation.
 
+By default, the command will read the save data in the configured save 
+directory, and output a sites.csv and inventory.csv to the current working 
+directory.
+
+The `--sites`, `--inventory` and `--layout` options to control which files 
+are output. if any of those options are specified, only those files will be 
+output
+
 ### Configuration
 
 The following settings should be placed in the `[fnav]` table of the settings
@@ -151,15 +159,39 @@ file:
 The following options can only be set on the command line and control the
 output of the command:
 
-* `--layout`, `-l`: output probe layout, i.e. a mapping of probe sites to
-  probe types (`inventory.csv`). This is the default if no other option mode
-  is provided.
+#### Source data
+Data is read from the gamedata in the configured save data folder, or a 
+specific gamedata file can be passed as an argument to the script.
+
+* `--cemu`, `-c`: Get FrontierNav data from a running Cemu instance, rather 
+  than a saved game. If this option is used, a custom save file argument is 
+  ignored
+* `--exclude-probes` `-x`: Do not include these probes in the inventory
+
+#### Output data
+The following options which data files are written. By default, inventory.
+csv and sites.csv are written to the output directory, equivalent to passing 
+`--inventory --sites` to the command. Specifying any of these options will 
+cause only the specified files to be written/output.
+
 * `--inventory`, `-i`: output probe inventory (`inventory.csv`)
-* `--sites`, `-s`: output available FrontierNav sites (`sites.csv`). This
-  currently uses the `sightseeing_spots` configuration for sightseeing spot
-  numbers
-* `--frontiernav`, `-j`: output a FrontierNav.net probe inventory URL. If
-  navigated to, this URL will set the "current probe layout".
+* `--sites`, `-s`: output available FrontierNav sites (`sites.csv`). 
+  Sightseeing spots are automatically detected, unless overriden for a given 
+  site with the`sightseeing_spots` configuration option
+* `--layout`, `-l`: output probe layout, i.e. a mapping of probe sites to
+  probe types (`setup.csv`). This can be used with the `--print` option of 
+  xenoprobes 1.x to calculate the current layout's value.
+* `--frontiernav`, `-j`: Attempt to open the current probe layout in the 
+  FrontierNav.net probe simulation
+
+#### Output control
+* `--output-dir`, `-o`: Write files to this directory instead of the current 
+  directory
+* `--print`, `-p`: Print the command output to the console, instead of 
+  writing a file. In the case of the `--frontiernav`/`-j` option, print the 
+  generated URL
+* `--tee`, `-t`: Print the command output to the console and write to a file 
+  (or open FrontierNav.net for `--frontiernav`/`-j`)
 
 ## `xcxtool compare`
 

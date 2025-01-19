@@ -13,22 +13,43 @@ from xcxtool.probes import data
 class FrontierNavTool(cli.Application):
     """Utility to get FrontierNav probe inventory and layout
 
-    By default, this will dump the information into a Xenoprobes inventory format,
-    which can be copied or redirected to a file. Specific probe types can be excluded
-    from the inventory using the -x option
+    By default, this will write a sites.csv and inventory.csv to the current working
+    directory using the layout in the configures save data. A custom save file can be
+    passed as an argument.
     """
 
     inventory: Counter[data.Probe]
     sites: dict[data.ProbeSite, data.Probe]
     spots: set[int]
-    _exclude: set = set()
+    _exclude: set[str] = set()
 
-    include_sites = cli.Flag(["-s", "--include-sites"], help="Include sites in output")
+    include_sites = cli.Flag(
+        ["-s", "--sites"], help="Include sites in output", group="Output data"
+    )
     include_inventory = cli.Flag(
-        ["-i", "--include-inventory"], help="Include probe inventory in output"
+        ["-i", "--inventory"],
+        help="Include probe inventory in output",
+        group="Output data",
     )
     include_layout = cli.Flag(
-        ["-l", "--include-layout"], help="Include probe layout in output"
+        ["-l", "--layout"], help="Include probe layout in output", group="Output data"
+    )
+    output_dir = cli.SwitchAttr(
+        ["-o", "--output-dir"],
+        argtype=cli.ExistingDirectory,
+        default=plumbum.local.path(),
+        help="Write files to this directory",
+        group="Output control",
+    )
+    print = cli.Flag(
+        ["-p", "--print"],
+        help="Print output to console instead of writing to files",
+        group="Output control",
+    )
+    tee = cli.Flag(
+        ["-t", "--tee"],
+        help="Print the command output to the console and write to files.",
+        group="Output control",
     )
 
     @cli.positional(cli.ExistingFile)
@@ -44,14 +65,18 @@ class FrontierNavTool(cli.Application):
         self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
         self.spots = get_sightseeing_spots(savedata[data.LOCATIONS_SLICE])
 
-        if self.include_inventory:
-            print(self.format_xenoprobes_inventory())
-        if self.include_sites:
-            print(self.format_xenoprobes_sites())
-        if self.include_layout:
-            print(self.format_xenoprobes_setup())
+        if not any((self.include_inventory, self.include_sites, self.include_layout)):
+            self.include_inventory = True
+            self.include_sites = True
 
-    @cli.switch(["-x", "--exclude"], str, argname="PROBES")
+        if self.include_inventory:
+            self.do_output(self.format_xenoprobes_inventory(), "inventory.csv")
+        if self.include_sites:
+            self.do_output(self.format_xenoprobes_sites(), "sites.csv")
+        if self.include_layout:
+            self.do_output(self.format_xenoprobes_setup(), "layout.csv")
+
+    @cli.switch(["-x", "--exclude"], str, argname="PROBES", group="Input")
     def exclude(self, exclude_set: str):
         """Exclude probe types from Xenoprobes inventory, e.g. "-x M1,R1\" """
         self._exclude = split_exclude(exclude_set)
@@ -113,6 +138,13 @@ class FrontierNavTool(cli.Application):
 
         return layout
 
+    def do_output(self, file_data: str, file_name: str):
+        if self.print or self.tee:
+            print(file_data)
+        if not self.print or self.tee:
+            out_file: plumbum.LocalPath = self.output_dir / file_name
+            out_file.write(file_data, "utf8")
+
     def _include_in_inventory(self, probe: data.Probe) -> str:
         if probe.xenoprobes_name in self._exclude:
             return "# "
@@ -130,7 +162,7 @@ class FrontierNavTool(cli.Application):
 
     def _get_spots_for_site(self, site: data.ProbeSite) -> list[int]:
         found_spots = [s for s in site.sightseeing_spots if s in self.spots]
-        configured_spots: int = config.get(f"fnav.sightseeing_spots").get(
+        configured_spots: int = config.get("fnav.sightseeing_spots").get(
             site.xenoprobes_name, -1
         )
         if configured_spots > len(site.sightseeing_spots):
