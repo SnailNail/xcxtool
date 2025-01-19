@@ -12,6 +12,7 @@ CONFIG_DEFAULTS = {
         "file_name": "backup-{datetime}",
     },
     "fnav": {
+        "output_dir": ".",
         "sightseeing_spots": {
             # Primordia
             "101": -1,  # max = 1

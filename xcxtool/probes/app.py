@@ -38,7 +38,6 @@ class FrontierNavTool(cli.Application):
     output_dir = cli.SwitchAttr(
         ["-o", "--output-dir"],
         argtype=cli.ExistingDirectory,
-        default=plumbum.local.path(),
         help="Write files to this directory",
         group="Output control",
     )
@@ -150,8 +149,19 @@ class FrontierNavTool(cli.Application):
         if self.print or self.tee:
             print(file_data)
         if not self.print or self.tee:
-            out_file: plumbum.LocalPath = self.output_dir / file_name
+            out_dir = self.get_output_dir()
+            out_file = out_dir / file_name
             out_file.write(file_data, "utf8")
+
+    def get_output_dir(self) -> LocalPath:
+        if self.output_dir:
+            return self.output_dir
+        config_setting = config.get("fnav.output_dir")
+        try:
+            return cli.ExistingDirectory(config_setting)
+        except ValueError:
+            print("Configured output_dir does not exist, writing to current directory")
+            return plumbum.local.path(".")
 
     def format_frontiernav_url(self) -> str:
         base_url = "https://frontiernav.net/wiki/xenoblade-chronicles-x/visualisations/maps/probe-guides/My%20Current%20Layout?map="
