@@ -17,8 +17,7 @@ type of save files generated at different times.
 import collections
 import os
 
-import plumbum
-from plumbum import cli
+from plumbum import cli, LocalPath
 from rich.console import Console
 
 SAVEDATA_PLAYER_OFFSET = -0x58
@@ -44,7 +43,7 @@ class DecryptSave(cli.Application):
         self.key_data = None
 
     @cli.positional(cli.ExistingFile)
-    def main(self, savefile: plumbum.LocalPath):
+    def main(self, savefile: LocalPath):
         rprint(f"Decrypting [bold]{savefile}[/bold]")
         data = savefile.read(None, "rb")
 
@@ -66,7 +65,7 @@ class DecryptSave(cli.Application):
         # noinspection PyTypeChecker
         decrypted = apply_key(data, self.key_data)
         of_name = savefile.name + "_decrypted"
-        of: plumbum.LocalPath = savefile.parent / of_name
+        of: LocalPath = savefile.parent / of_name
 
         rprint(f"Writing decrypted data to [green]{of}[/green]")
         of.write(decrypted, None, "wb")
@@ -80,7 +79,7 @@ class DecryptSave(cli.Application):
             copy_mtime(savefile, of_key)
 
     @cli.switch(["-k", "--key"], cli.ExistingFile)
-    def key(self, key_file: plumbum.LocalPath):
+    def key(self, key_file: LocalPath):
         """Use KEY_File to decode save data. KEY_FILE must be exactly 512 bytes"""
         self.key_data = key_file.read(None, "rb")
 
@@ -93,7 +92,7 @@ class EncryptSave(cli.Application):
         self.key_data = None
 
     @cli.positional(cli.ExistingFile)
-    def main(self, decrypted_data: plumbum.LocalPath):
+    def main(self, decrypted_data: LocalPath):
         if len(self.key_data) != 512:
             rprint("[bold red]KEY_FILE must be exactly 512 bytes[/bold red]")
             return 1
@@ -110,7 +109,7 @@ class EncryptSave(cli.Application):
         copy_mtime(decrypted_data, of)
 
     @cli.switch(["-k", "--key"], cli.ExistingFile, "KEY_FILE", mandatory=True)
-    def key(self, key_file: plumbum.LocalPath):
+    def key(self, key_file: LocalPath):
         """Key to use to encrypt the save data. Must be a file of size 512 bytes"""
         self.key_data = key_file.read(None, "rb")
 
@@ -140,7 +139,7 @@ def _decrypt(cipher: bytes, key: bytes):
     return bytes(a ^ b for a, b in zip(cipher, key))
 
 
-def copy_mtime(src: plumbum.LocalPath, dest: plumbum.LocalPath) -> None:
+def copy_mtime(src: LocalPath, dest: LocalPath) -> None:
     """Copy the modified date from src to dest."""
     src_stat = src.stat()
     dest_stat = dest.stat()

@@ -1,7 +1,6 @@
 """Main entry point for xcxtool"""
 
-from plumbum import cli
-import plumbum
+from plumbum import cli, local, LocalPath
 
 from . import VERSION
 from . import config
@@ -21,18 +20,18 @@ class XCXToolsCLI(cli.Application):
         "USA": "101c4d00",
         "JPN": "10116100",
     }
-    cemu_save_dir: plumbum.LocalPath = None
+    cemu_save_dir: LocalPath = None
 
-    config_path: plumbum.LocalPath = cli.SwitchAttr(
+    config_path: LocalPath = cli.SwitchAttr(
         ["--config", "-c"],
-        plumbum.local.path,
+        local.path,
         help="Use this file for config instead of the default",
     )
     cemu_process_name: str = cli.SwitchAttr(
         ["--cemu-process-name"],
         help="Name of the Cemu process to read data from; the default is cemu.exe",
     )
-    cemu_nand_root: plumbum.LocalPath = cli.SwitchAttr(
+    cemu_nand_root: LocalPath = cli.SwitchAttr(
         ["--cemu-nand-root"],
         cli.ExistingDirectory,
         help="Path to Cemu's emulated NAND",
@@ -58,7 +57,7 @@ class XCXToolsCLI(cli.Application):
         persistent_id = config.get_preferred(
             self.cemu_account_id, "xcxtool.persistent_id"
         )
-        cemu_save_dir = plumbum.local.path(
+        cemu_save_dir = local.path(
             nand_root,
             "usr/save/00050000",
             region_part,

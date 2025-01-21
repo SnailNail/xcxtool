@@ -4,8 +4,7 @@ import sys
 import webbrowser
 from collections import Counter
 
-import plumbum
-from plumbum import LocalPath, cli
+from plumbum import cli, local, LocalPath
 
 from xcxtool import config, savefiles
 from xcxtool.probes import data
@@ -161,7 +160,7 @@ class FrontierNavTool(cli.Application):
             return cli.ExistingDirectory(config_setting)
         except ValueError:
             print("Configured output_dir does not exist, writing to current directory")
-            return plumbum.local.path(".")
+            return local.path(".")
 
     def format_frontiernav_url(self) -> str:
         base_url = "https://frontiernav.net/wiki/xenoblade-chronicles-x/visualisations/maps/probe-guides/My%20Current%20Layout?map="
@@ -217,7 +216,7 @@ def get_save_data_from_file(file_path: LocalPath) -> bytes:
 
 def get_save_data_from_backup_folder() -> bytes:
     """Get save data from the backup folder config"""
-    folder = plumbum.local.path(config.get("backup.save_directory"))
+    folder = local.path(config.get("backup.save_directory"))
     save_file = folder.join("st", "game", "gamedata")
     return get_save_data_from_file(save_file)
 

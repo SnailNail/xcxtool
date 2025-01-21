@@ -3,7 +3,7 @@
 import struct
 
 import pendulum
-import plumbum
+from plumbum import LocalPath
 
 from ..memory_reader import SaveDataReader
 from .. import game_timer
@@ -49,7 +49,7 @@ def get_datetime() -> dict[str, pendulum.DateTime]:
     }
 
 
-def get_mtime(file: plumbum.LocalPath) -> dict[str, pendulum.DateTime]:
+def get_mtime(file: LocalPath) -> dict[str, pendulum.DateTime]:
     return {"save_date": pendulum.from_timestamp(file.stat().st_mtime, tz="local")}
 
 

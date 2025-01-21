@@ -2,8 +2,7 @@
 import shutil
 import sys
 
-import plumbum
-from plumbum import cli
+from plumbum import cli, local, LocalPath
 from rich import print as rprint
 
 from .. import config, memory_reader
@@ -19,22 +18,22 @@ class BackupSave(cli.Application):
     See xcxtool --help for global options
     """
 
-    backup_dir: plumbum.LocalPath = cli.SwitchAttr(
+    backup_dir: LocalPath = cli.SwitchAttr(
         ["-b", "--backup-dir"],
-        argtype=plumbum.LocalPath,
-        help=f"Backups will be saved to this directory",
+        argtype=LocalPath,
+        help="Backups will be saved to this directory",
     )
     backup_name: str = cli.SwitchAttr(
         ["-f", "--file"],
-        help=f"Name for the backup file (without extension)",
+        help="Name for the backup file (without extension)",
     )
-    save_dir: plumbum.LocalPath = cli.SwitchAttr(
+    save_dir: LocalPath = cli.SwitchAttr(
         ["-s", "--save-dir"],
         argtype=cli.ExistingDirectory,
         help="Custom save data path. Must contain save files in the st/game subdirectory",
     )
     dry_run: bool = cli.Flag(["--dry-run"], help="Do not create the archive, just print its name")
-    gamedata: plumbum.LocalPath = None
+    gamedata: LocalPath = None
 
     def main(self):
         if self.parent is None:
@@ -64,11 +63,11 @@ class BackupSave(cli.Application):
 
         self.do_backup(archive_name, backup_path, save_path)
 
-    def get_backup_path(self) -> plumbum.LocalPath | None:
+    def get_backup_path(self) -> LocalPath | None:
         if self.backup_dir is not None:
             return self.backup_dir
 
-        backup_dir = plumbum.local.path(config.get("backup.backup_directory"))
+        backup_dir = local.path(config.get("backup.backup_directory"))
         if not backup_dir.exists():
             rprint(f"[red]Backup directory not found (got '{self.backup_dir}')")
             return
@@ -77,12 +76,12 @@ class BackupSave(cli.Application):
             return
         return backup_dir
 
-    def get_save_path(self) -> plumbum.LocalPath | None:
+    def get_save_path(self) -> LocalPath | None:
         if self.save_dir is not None:
             return self.save_dir
 
         if configured := config.get("backup.save_directory"):
-            return plumbum.local.path(configured)
+            return local.path(configured)
 
         if self.parent.cemu_save_dir is not None:
             return self.parent.cemu_save_dir.parents[1]
@@ -96,7 +95,7 @@ class BackupSave(cli.Application):
         field_values.update(tokens.get_playtime(gamedata_reader))
         return field_values
 
-    def do_backup(self, backup_name: str, backup_dir: plumbum.LocalPath, save_dir: plumbum.LocalPath):
+    def do_backup(self, backup_name: str, backup_dir: LocalPath, save_dir: LocalPath):
         rprint(f"Backing up from: [green]{save_dir}[/green]\n"
                f"to: [green]{backup_dir}[/green]\n"
                f"With filename [green]{backup_name}.zip[/green]")

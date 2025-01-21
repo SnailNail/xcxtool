@@ -3,8 +3,7 @@
 Note that not all locations are catalogued!
 """
 
-import plumbum
-from plumbum import cli
+from plumbum import cli, LocalPath
 
 from xcxtool.data import locations
 from xcxtool.memory_reader import SaveFileReader
@@ -23,11 +22,11 @@ class LocationTool(cli.Application):
     not_found = cli.Flag(["-n", "--not-found"], help="show locations yet to be found", excludes="found")
 
     @cli.positional(cli.ExistingFile)
-    def main(self, file: plumbum.LocalPath = None):
+    def main(self, file: LocalPath = None):
         self.data = self.load_data(file)
         self.found_locations = get_locations_from_save_data(self.data)
 
-    def load_data(self, from_data: plumbum.LocalPath = None) -> bytes:
+    def load_data(self, from_data: LocalPath = None) -> bytes:
         if not from_data:
             from_data = self.parent.cemu_save_dir.join("gamedata")
         reader = SaveFileReader(from_data)

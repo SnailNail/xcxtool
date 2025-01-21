@@ -4,8 +4,7 @@ import json
 import os
 import sys
 
-import plumbum
-from plumbum import cli
+from plumbum import cli, LocalPath
 import rich.console
 from obsws_python import ReqClient
 
@@ -45,19 +44,19 @@ class CompareSavedata(cli.Application):
         list=True,
         help="Exclude ranges from the comparison",
     )
-    save_directory: plumbum.LocalPath = cli.SwitchAttr(
+    save_directory: LocalPath = cli.SwitchAttr(
         ["-s", "--save-dir"],
         cli.ExistingDirectory,
         excludes=["--before", "--after"],
         help="Override default save data folder",
     )
-    before_file: plumbum.LocalPath = cli.SwitchAttr(
+    before_file: LocalPath = cli.SwitchAttr(
         ["-b", "--before"],
         cli.ExistingFile,
         excludes=["--save-dir"],
         help="Use a specific file as the 'before' state",
     )
-    after_file: plumbum.LocalPath = cli.SwitchAttr(
+    after_file: LocalPath = cli.SwitchAttr(
         ["-a", "--after"],
         cli.ExistingFile,
         excludes=["--save-dir"],
@@ -201,7 +200,7 @@ class MonitorCemu(cli.Application):
 class MonitorProcessJson(cli.Application):
     """Process the json data produced when recording gameplay with monitoring"""
 
-    json_path: plumbum.LocalPath
+    json_path: LocalPath
 
     annotate = cli.Flag(
         ["a", "annotate"], False, excludes=["locations"], help="Annotate changes"
@@ -214,7 +213,7 @@ class MonitorProcessJson(cli.Application):
     )
 
     @cli.positional(cli.ExistingFile)
-    def main(self, json_path: plumbum.LocalPath):
+    def main(self, json_path: LocalPath):
         try:
             self.json_path = json_path
             if self.locations:
