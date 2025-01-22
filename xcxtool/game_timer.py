@@ -21,14 +21,14 @@ The values can be unpacked using either integer division and modulo operations
 operations (as in the unpack_save_timestamp() function), there is negligible
 performance difference between the two in CPython.
 """
+
+import datetime
 import typing
 
-import pendulum
 
-
-SAVE_TIMESTAMP_OFFSET = 0x45d64
-SAVE_TIMESTAMP_EPOCH = pendulum.datetime(2000, 1, 1)
-GAME_TIMER_OFFSET = 0x45e40
+SAVE_TIMESTAMP_OFFSET = 0x45D64
+SAVE_TIMESTAMP_EPOCH = datetime.datetime(2000, 1, 1)
+GAME_TIMER_OFFSET = 0x45E40
 
 
 class GameTimer(typing.NamedTuple):
@@ -36,8 +36,8 @@ class GameTimer(typing.NamedTuple):
     minutes: int
     seconds: int
 
-    def as_duration(self) -> pendulum.Duration:
-        return pendulum.duration(
+    def as_timedelta(self) -> datetime.timedelta:
+        return datetime.timedelta(
             hours=self.hours,
             minutes=self.minutes,
             seconds=self.seconds,
@@ -51,13 +51,10 @@ class SavedTime(typing.NamedTuple):
     minutes: int
     seconds: int
 
-    def as_datetime(self) -> pendulum.DateTime:
-        return SAVE_TIMESTAMP_EPOCH.add(
-            years=self.year,
-            days=self.days,
-            hours=self.hours,
-            minutes=self.minutes,
-            seconds=self.seconds,
+    def as_datetime(self) -> datetime.datetime:
+        real_year = SAVE_TIMESTAMP_EPOCH.year + self.year
+        return SAVE_TIMESTAMP_EPOCH.replace(year=real_year) + datetime.timedelta(
+            days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
 
 
@@ -80,7 +77,7 @@ def unpack_game_timer(timer_value: int | bytes) -> GameTimer:
     return GameTimer(hours, minutes, seconds)
 
 
-def unpack_save_timestamp(data: int | bytes) -> SavedTime:
+def unpack_save_timestamp_raw(data: int | bytes) -> SavedTime:
     """Convert the value stored at 0x45d64 in the gamedata file.
 
     This value stores the timestamp of the last save, stored as five integers
@@ -100,3 +97,7 @@ def unpack_save_timestamp(data: int | bytes) -> SavedTime:
     mins = (data >> 6) & 63
     secs = data & 63
     return SavedTime(year, days, hours, mins, secs)
+
+
+def unpack_save_timestamp(data: int | bytes) -> datetime.datetime:
+    return unpack_save_timestamp_raw(data).as_datetime()

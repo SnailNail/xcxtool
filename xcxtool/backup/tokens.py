@@ -1,8 +1,8 @@
 """Module to generate replacement token values for backup names"""
 
+import datetime
 import struct
 
-import pendulum
 from plumbum import LocalPath
 
 from ..memory_reader import SaveDataReader
@@ -40,8 +40,8 @@ division_map = {
 }
 
 
-def get_datetime() -> dict[str, pendulum.DateTime]:
-    now = pendulum.now("local")
+def get_datetime() -> dict[str, datetime.datetime]:
+    now = datetime.datetime.now()
     return {
         "date": format(now, "%Y%m%d"),
         "time": format(now, "%H-%M-%S"),
@@ -49,8 +49,8 @@ def get_datetime() -> dict[str, pendulum.DateTime]:
     }
 
 
-def get_mtime(file: LocalPath) -> dict[str, pendulum.DateTime]:
-    return {"save_date": pendulum.from_timestamp(file.stat().st_mtime, tz="local")}
+def get_mtime(file: LocalPath) -> dict[str, datetime.datetime]:
+    return {"save_date": datetime.datetime.fromtimestamp(file.stat().st_mtime)}
 
 
 def get_character_data(reader: SaveDataReader) -> dict:
@@ -79,11 +79,11 @@ def get_character_data(reader: SaveDataReader) -> dict:
     }
 
 
-def get_playtime(reader: SaveDataReader) -> dict[str, str | pendulum.DateTime]:
+def get_playtime(reader: SaveDataReader) -> dict[str, str | datetime.datetime]:
     playtime_buffer = reader.read_memory(0x45e40, 4)
     playtime = game_timer.unpack_game_timer(playtime_buffer)
     savetime_buffer = reader.read_memory(0x45d64, 4)
-    savetime = game_timer.unpack_save_timestamp(savetime_buffer).as_datetime()
+    savetime = game_timer.unpack_save_timestamp(savetime_buffer)
     return {
         "play_time": f"{playtime.hours:03d}-{playtime.minutes:02d}-{playtime.seconds:02d}",
         "save_date": format(savetime, "%Y%m%d"),

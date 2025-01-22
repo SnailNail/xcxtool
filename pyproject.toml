@@ -10,7 +10,6 @@ dependencies = [
     "plumbum >= 1.8.1",
     "rich >= 13.3.1",
     "Pymem >= 1.10.0",
-    "pendulum >= 2.1.2, < 3.0",
     "obsws-python >= 1.7.0",
     "tomli >= 2.0.0 ; python_version < '3.11'",
 ]

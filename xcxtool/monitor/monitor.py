@@ -1,6 +1,7 @@
 """Un-integrated tools for watching memory"""
 
 import dataclasses
+import datetime
 import json
 import time
 from os import PathLike
@@ -8,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import obsws_python
-import pendulum
 
 from xcxtool.memory_reader import SaveDataReader
 from xcxtool.data import locations
@@ -49,7 +49,7 @@ class MemoryDelta:
 
 @dataclasses.dataclass
 class CompareResult:
-    time: pendulum.datetime
+    time: datetime.datetime
     changes: list[MemoryDelta]
 
     def format(
@@ -90,7 +90,7 @@ class Comparator:
             self.previous = reader.read_memory(0, self.data_size)
 
     def compare(self, other: bytes = None) -> CompareResult:
-        now = pendulum.now("local")
+        now = datetime.datetime.now()
         if other is not None:
             if len(other) != len(self.previous):
                 raise ValueError(
@@ -118,7 +118,7 @@ class Comparator:
             new_mem = self._read()
         deltas = []
         current_run = None
-        now = pendulum.now()
+        now = datetime.datetime.now()
 
         for offset, (before, after) in enumerate(zip(self.previous, new_mem)):
             if not self._valid_offset(offset) or before == after:
@@ -158,7 +158,7 @@ class Comparator:
         else:
             compare_func = self.compare
 
-        monitor_start = pendulum.now()
+        monitor_start = datetime.datetime.now()
         last = monitor_start.timestamp()
         print(f"Started monitor at {monitor_start}")
         changes = {}
