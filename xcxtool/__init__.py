@@ -1,1 +1,2 @@
-VERSION = "0.1.0"
+"""A collection of command line helpers for Xenoblade Chronicles X on Cemu"""
+__version__ = "0.1.0"
