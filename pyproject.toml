@@ -9,17 +9,7 @@ readme = "README.md"
 authors = [
     {name = "SnailNail"}
 ]
-license = "MIT"
-license-files = "LICENCE"
-classifiers = [
-    "Private :: Do Not Upload",
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python 3",
-]
-keywords = ["xenoblade", "xenoblade x", "xenoblade chronicles x", "save"]
+license = { text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "plumbum >= 1.8.1",
@@ -29,6 +19,14 @@ dependencies = [
     "obsws-python >= 1.7.0",
     "tomli >= 2.0.0 ; python_version < '3.11'",
 ]
+classifiers = [
+    "Private :: Do Not Upload",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python 3",
+]
+keywords = ["xenoblade", "xenoblade x", "xenoblade chronicles x", "save"]
 dynamic = ["version"]
 
 [project.scripts]
