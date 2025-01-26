@@ -2,7 +2,7 @@
 
 from plumbum import cli, local, LocalPath
 
-from . import VERSION
+from . import __version__
 from . import config
 from .backup import BackupSave
 from .savefiles import DecryptSave, EncryptSave
@@ -14,7 +14,7 @@ from .locations import LocationTool
 class XCXToolsCLI(cli.Application):
     PROGNAME = "xcxtool"
     DESCRIPTION = "Utilities for playing Xenoblade Chronicles X on Cemu"
-    VERSION = VERSION
+    VERSION = __version__
     _REGION_PARTS = {
         "EUR": "101c4c00",
         "USA": "101c4d00",
