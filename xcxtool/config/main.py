@@ -15,7 +15,7 @@ from plumbum import local, LocalPath
 from xcxtool.config.defaults import CONFIG_DEFAULTS
 
 
-__all__ = ["load_config", "get", "get_preferred"]
+__all__ = ["load_config", "get", "get_preferred", "get_section"]
 
 _config = {}
 
@@ -86,3 +86,11 @@ def get_preferred(
     if preferred is sentinel:
         return get(fallback_config_path)
     return preferred
+
+
+def get_section(section: str) -> dict[str, Any] | None:
+    """Get a whole config section"""
+    try:
+        return _config[section]
+    except KeyError:
+        return CONFIG_DEFAULTS.get(section)

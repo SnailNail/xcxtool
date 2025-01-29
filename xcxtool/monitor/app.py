@@ -78,8 +78,10 @@ class CompareSavedata(cli.Application):
         after_reader = self.get_after()
         if before_data is None or after_reader is None:
             return 2
+        named_ranges = monitor.NamedRanges()
+        named_ranges.add_from_config(config.get_section("named_ranges"))
         comparator = monitor.Comparator(
-            after_reader, self.include, self.exclude, before_data
+            after_reader, self.include, self.exclude, before_data, named_ranges
         )
         changes = comparator.compare()
         print(changes.format())
@@ -172,7 +174,11 @@ class MonitorCemu(cli.Application):
         if reader is None:
             exit(1)
         self.get_include_and_exclude()
-        comp = monitor.Comparator(reader, include=self.include, exclude=self.exclude)
+        named_ranges = monitor.NamedRanges()
+        named_ranges.add_from_config(config.get_section("named_ranges"))
+        comp = monitor.Comparator(
+            reader, include=self.include, exclude=self.exclude, named_ranges=named_ranges
+        )
         if self.record:
             self.obs = self._get_obs_client()
             self.obs.start_record()
@@ -201,6 +207,7 @@ class MonitorProcessJson(cli.Application):
     """Process the json data produced when recording gameplay with monitoring"""
 
     json_path: LocalPath
+    named_ranges: monitor.NamedRanges
 
     annotate = cli.Flag(
         ["a", "annotate"], False, excludes=["locations"], help="Annotate changes"

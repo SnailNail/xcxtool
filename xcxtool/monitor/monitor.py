@@ -6,7 +6,7 @@ import json
 import time
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import obsws_python
 
@@ -22,6 +22,7 @@ class MemoryDelta:
     offset: int = 0
     before: list[int] = dataclasses.field(default_factory=list)
     after: list[int] = dataclasses.field(default_factory=list)
+    name: str = ""
 
     def __bool__(self):
         return any((self.offset, self.before, self.after))
@@ -30,13 +31,16 @@ class MemoryDelta:
         return self.to_str()
 
     def to_str(self, address_format="#08x", value_format="#04x"):
+        name_suffix = ""
+        if self.name:
+            name_suffix = f" ({self.name})"
         if len(self.before) == 1:
             before_str = format(self.before[0], value_format)
             after_str = format(self.after[0], value_format)
         else:
             before_str = [format(i, value_format) for i in self.before]
             after_str = [format(i, value_format) for i in self.after]
-        return f"{self.offset:{address_format}}: {before_str} -> {after_str}"
+        return f"{self.offset:{address_format}}: {before_str} -> {after_str}{name_suffix}"
 
     def append(self, new_before, new_after):
         self.before.append(new_before)
@@ -71,6 +75,45 @@ class CompareResult:
         return bool(self.changes)
 
 
+class NamedRanges:
+    """Class for storing and retrieving ranges by name"""
+    def __init__(self, initial_ranges: dict[range, str] = None):
+        if initial_ranges is None:
+            initial_ranges = {}
+        range_list = list(initial_ranges.items())
+        range_list.sort(key=lambda t: len(t[0]))
+        self.ranges = range_list
+
+    def add_from_config(self, config: dict[str, Sequence[int]]) -> None:
+        """Add ranges from a config dict
+
+        The dictionary should be a mapping of strings to a sequence of
+        (start, stop) pairs
+        """
+        new_ranges = [(range(start, end), name) for name, (start, end) in config.items()]
+        self.ranges.extend(new_ranges)
+        self.ranges.sort(key=lambda t: len(t[0]))
+
+    def add_range(self, name: str, range_: range) -> None:
+        """Add a new named range to the mapping"""
+        self.ranges.append((range_, name))
+        self.ranges.sort(key=lambda t: len(t[0]))
+
+    def get_name(self, value: int) -> str:
+        """Get the name of the range containing value"""
+        for range_, name in self.ranges:
+            if value in range_:
+                return name
+        return ""
+
+    def get_range(self, name: str) -> range:
+        """Get the range defined by name"""
+        for range_, range_name in self.ranges:
+            if name == range_name:
+                return range_
+        return range(0)
+
+
 class Comparator:
     data_size = 359_984
 
@@ -80,10 +123,12 @@ class Comparator:
         include: list[range] = None,
         exclude: list[range] = None,
         initial_data: bytes = None,
+        named_ranges: NamedRanges = NamedRanges(),
     ):
         self.reader = reader
         self.includes = include if include else [range(0, self.data_size)]
         self.excludes = exclude if exclude else []
+        self.named_ranges = named_ranges
         if initial_data is not None:
             self.previous = initial_data
         else:
@@ -102,7 +147,8 @@ class Comparator:
         deltas = []
         for offset, (before, after) in enumerate(zip(self.previous, mem)):
             if before != after and self._valid_offset(offset):
-                deltas.append(MemoryDelta(offset, [before], [after]))
+                region_name = self.named_ranges.get_name(offset)
+                deltas.append(MemoryDelta(offset, [before], [after], region_name))
         self.previous = mem
         return CompareResult(now, deltas)
 
