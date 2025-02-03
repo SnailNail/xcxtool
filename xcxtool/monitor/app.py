@@ -4,13 +4,13 @@ import json
 import os
 import sys
 
-from plumbum import cli, LocalPath
 import rich.console
 from obsws_python import ReqClient
+from obsws_python.error import OBSSDKError
+from plumbum import cli, LocalPath
 
 from xcxtool import config, memory_reader
 from xcxtool.monitor import monitor
-
 
 _console = rich.console.Console()
 rprint = _console.print
@@ -180,9 +180,18 @@ class MonitorCemu(cli.Application):
             reader, include=self.include, exclude=self.exclude, named_ranges=named_ranges
         )
         if self.record:
-            self.obs = self._get_obs_client()
-            self.obs.start_record()
-            comp.monitor_and_record(self.obs, aggregate_runs=False)
+            try:
+                self._record(comp)
+            except ConnectionRefusedError as e:
+                rprint(
+                    "[red]Could not connect to OBS Websocket. Is OBS running and correctly configured?[/]"
+                )
+                rprint(e)
+                return 1
+            except OBSSDKError as e:
+                rprint("[red]Error processing OBS Websocket request[/]")
+                rprint(e)
+                return 1
         else:
             comp.monitor()
         reader.close()
@@ -200,6 +209,22 @@ class MonitorCemu(cli.Application):
             password=config.get_preferred(self.obs_password, "compare.obs_password"),
         )
         return obs
+
+    def _record(self, comparator: monitor.Comparator) -> None:
+        """Set up the OBS client and run monitor-and-record method
+
+        May raise OBSSDKError (or a subclass), ConnectionRefusedError or
+        ValueError
+        """
+        obs = self._get_obs_client()
+        old_record_dir = obs.get_record_directory().record_directory
+        custom_record_dir = config.get("compare.recording_dir")
+        try:
+            if custom_record_dir:
+                obs.set_record_directory(custom_record_dir)
+            comparator.monitor_and_record(obs)
+        finally:
+            obs.set_record_directory(old_record_dir)
 
 
 @MonitorCemu.subcommand("process-json")
