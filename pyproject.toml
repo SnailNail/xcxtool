@@ -12,6 +12,7 @@ dependencies = [
     "Pymem >= 1.10.0",
     "obsws-python >= 1.7.0",
     "tomli >= 2.0.0 ; python_version < '3.11'",
+    "platformdirs>=4.3.6",
 ]
 classifiers = [
     "Private :: Do Not Upload",
