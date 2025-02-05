@@ -1,19 +1,20 @@
 """Main entry point for xcxtool"""
 
+from platformdirs import user_config_path
 from plumbum import cli, local, LocalPath
 
-from . import __version__
+from . import __version__, __doc__ as description
 from . import config
 from .backup import BackupSave
-from .savefiles import DecryptSave, EncryptSave
+from .locations import LocationTool
 from .monitor import MonitorCemu, CompareSavedata
 from .probes import FrontierNavTool
-from .locations import LocationTool
+from .savefiles import DecryptSave, EncryptSave
 
 
 class XCXToolsCLI(cli.Application):
     PROGNAME = "xcxtool"
-    DESCRIPTION = "Utilities for playing Xenoblade Chronicles X on Cemu"
+    DESCRIPTION = description
     VERSION = __version__
     _REGION_PARTS = {
         "EUR": "101c4c00",
@@ -51,7 +52,7 @@ class XCXToolsCLI(cli.Application):
         config.load_config(self.config_path)
         nand_root = config.get_preferred(self.cemu_nand_root, "xcxtool.nand_root")
         if not nand_root:
-            return
+            nand_root = user_config_path("Cemu", False, roaming=True) / "mlc0"
         region = config.get_preferred(self.region, "xcxtool.region")
         region_part = self._REGION_PARTS[region.upper()]
         persistent_id = config.get_preferred(
@@ -68,6 +69,8 @@ class XCXToolsCLI(cli.Application):
         if cemu_save_dir.exists():
             print(f"Saved data found at {cemu_save_dir}")
             self.cemu_save_dir = cemu_save_dir
+        else:
+            print("Could not find saved data (Cemu NAND not found)")
 
 
 XCXToolsCLI.subcommand("backup", BackupSave)
