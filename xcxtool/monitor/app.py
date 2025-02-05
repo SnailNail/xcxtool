@@ -283,7 +283,7 @@ class MonitorProcessJson(cli.Application):
         print(f"Annotating {total_changes} changes.")
         print("Press Ctrl-C to exit without saving, enter Ctrl-Z to save and quit")
 
-        for n, (timestamp, changeset) in enumerate(change_data.items()):
+        for n, (timestamp, changeset) in enumerate(change_data.items(), 1):
             memory_deltas = [
                 monitor.MemoryDelta(**change) for change in changeset["changes"]
             ]
