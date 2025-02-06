@@ -3,6 +3,7 @@
 import csv
 import json
 import os
+import re
 import sys
 
 import rich.console
@@ -378,3 +379,96 @@ class MonitorProcessJson(cli.Application):
             writer = csv.DictWriter(sys.stdout, rows[0])
         writer.writeheader()
         writer.writerows(rows)
+
+
+@MonitorCemu.subcommand("grep")
+class MonitorSearchJson(cli.Application):
+    """Search monitor JSON output for patterns.
+
+    By default, PATTERN is treated as a regular expression and is searched for in
+    comments. if `-s`|`--simple` is specified, PATTERN is treated as a simple string
+    and matched accordingly
+
+    If `-o`|`--offset` is passed, matches will be limited to changes at that offset. As
+    well as a plain number, a range can be specified as `start,stop` or as a named
+    range.
+    """
+    _flags: re.RegexFlag = re.IGNORECASE
+    pattern: re.Pattern
+    data: dict[str, dict]
+    matches: dict[str, re.Match]
+    offsets: list[range] = []
+
+    simple_search: bool = cli.Flag(
+        ["s", "simple"], help="Do a simple string search, do not match regular expressions"
+    )
+    exact_match: bool = cli.Flag(
+        ["e", "exact"], help="PATTERN must match the entire comment, not just a subset"
+    )
+
+    # noinspection PyPep8Naming
+    def main(self, PATTERN: str, SEARCH_PATH: cli.ExistingFile):
+        self.pattern = re.compile(PATTERN, self._flags)
+        with open(SEARCH_PATH) as f:
+            self.data = json.load(f)
+        self.regex_search()
+        self.print_matches()
+
+    @cli.switch(["c", "case-sensitive"])
+    def match_case(self):
+        """Do a case-sensitive search"""
+        self._flags ^ re.IGNORECASE
+
+    @cli.switch(["o", "offset"], list=True)
+    def offset(self, offsets: list[str]):
+        """Limit matches to changes at the specified offsets or range of offsets"""
+        self.offsets = [parse_offset_ranges(o) for o in offsets]
+
+    def regex_search(self):
+        self.matches = {}
+        for ts, changeset in self.data.items():
+            if self.exact_match:
+                match = self.pattern.fullmatch(changeset["comment"])
+            else:
+                match = self.pattern.search(changeset["comment"])
+            if match:
+                self.matches[ts] = match
+
+    def print_matches(self):
+        for ts, match in self.matches.items():
+            changes = self.data[ts]
+            deltas = [monitor.MemoryDelta(**delta)
+                      for delta in changes["changes"]
+                      if self.in_offsets(delta["offset"])]
+            comment = rich_highlight(changes["comment"], match.start(), match.end())
+            rprint(ts, comment)
+            for delta in deltas:
+                rprint(f"  {delta}")
+
+    def in_offsets(self, value: int) -> bool:
+        if not self.offsets:
+            return True
+        return any(value in r for r in self.offsets)
+
+
+def parse_offset_ranges(range_input: str) -> range:
+    """Convert strings to ranges for the MonitorSearchJson offsets options"""
+    named_ranges = config.get_section("named_ranges")
+    try:
+        single_int = int(range_input, 0)
+    except ValueError:
+        pass
+    else:
+        return range(single_int, single_int + 1)
+    try:
+        return range(*named_ranges[range_input])
+    except KeyError:
+        pass
+    start, _, stop = range_input.partition(",")
+    return range(int(start, 0), int(stop, 0))
+
+
+def rich_highlight(string: str, start: int, end: int, style: str = "[green]") -> str:
+    if start == end:
+        return string
+    return string[:start] + style + string[start:end] + "[/]" + string[end:]
