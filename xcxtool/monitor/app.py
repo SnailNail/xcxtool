@@ -419,7 +419,7 @@ class MonitorSearchJson(cli.Application):
         """Do a case-sensitive search"""
         self._flags ^ re.IGNORECASE
 
-    @cli.switch(["o", "offset"], list=True)
+    @cli.switch(["o", "offset"], str, list=True)
     def offset(self, offsets: list[str]):
         """Limit matches to changes at the specified offsets or range of offsets"""
         self.offsets = [parse_offset_ranges(o) for o in offsets]
