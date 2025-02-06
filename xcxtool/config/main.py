@@ -24,9 +24,9 @@ def load_config(config_file: LocalPath = None):
     if config_file is None:
         config_file = find_config()
     if config_file is None or not config_file.exists():
-        print("Config file not found")
+        print("Config file not found", file=sys.stderr)
         return
-    print(f"Using config file: {config_file}")
+    print(f"Using config file: {config_file}", file=sys.stderr)
     with open(config_file, "rb") as f:
         new_config = tomllib.load(f)
         _config.update(new_config)

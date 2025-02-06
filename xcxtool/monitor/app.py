@@ -1,5 +1,6 @@
 """Monitor Cemu process for changes"""
 
+import csv
 import json
 import os
 import sys
@@ -177,7 +178,10 @@ class MonitorCemu(cli.Application):
         named_ranges = monitor.NamedRanges()
         named_ranges.add_from_config(config.get_section("named_ranges"))
         comp = monitor.Comparator(
-            reader, include=self.include, exclude=self.exclude, named_ranges=named_ranges
+            reader,
+            include=self.include,
+            exclude=self.exclude,
+            named_ranges=named_ranges,
         )
         if self.record:
             try:
@@ -232,28 +236,55 @@ class MonitorProcessJson(cli.Application):
     """Process the json data produced when recording gameplay with monitoring"""
 
     json_path: LocalPath
+    csv_path: LocalPath | None
     named_ranges: monitor.NamedRanges
 
     annotate = cli.Flag(
-        ["a", "annotate"], False, excludes=["locations"], help="Annotate changes"
+        ["a", "annotate"],
+        False,
+        excludes=["locations", "csv"],
+        group="Actions",
+        help="Annotate changes",
     )
     locations = cli.Flag(
-        ["l", "locations"], False, excludes=["annotate"], help="Extract locations"
+        ["l", "locations"],
+        False,
+        excludes=["annotate", "csv"],
+        group="Actions",
+        help="Extract locations",
+    )
+    csv = cli.Flag(
+        ["c", "csv"],
+        default=False,
+        excludes=["annotate", "locations"],
+        group="Actions",
+        help="Convert to a CSV file",
     )
     decimal = cli.Flag(
-        ["d", "decimal"], False, excludes=["annotate"], help="Print decimal offsets & bits"
+        ["d", "decimal"],
+        False,
+        requires=["locations"],
+        help="Print decimal offsets & bits",
+    )
+    append_csv = cli.Flag(
+        ["append"],
+        requires=["csv"],
+        help="Append CSV output to the specified file, instead of overwriting it",
     )
 
     @cli.positional(cli.ExistingFile)
-    def main(self, json_path: LocalPath):
+    def main(self, json_path: LocalPath, csv_path: LocalPath = None):
         try:
             self.json_path = json_path
+            self.csv_path = csv_path
             if self.locations:
                 self.do_locations()
             elif self.annotate:
                 self.do_annotations()
+            elif self.csv:
+                self.to_csv()
             else:
-                print("Re-run with one of '--locations' or '--annotate'")
+                print("Re-run with one of '--locations', '--annotate' or '--csv'")
         except KeyboardInterrupt:
             print("Caught Ctrl-C, exiting (no changes will be saved)")
 
@@ -303,3 +334,47 @@ class MonitorProcessJson(cli.Application):
         with open(self.json_path, "w") as f:
             json.dump(change_data, f, indent=2)
         os.utime(self.json_path, (original_stat.st_atime, original_stat.st_mtime))
+
+    def to_csv(self):
+        with open(self.json_path) as f:
+            data = json.load(f)
+        rows = []
+        for time, changeset in data.items():
+            rows.extend(self._changeset_to_rows(time, changeset))
+        if self.csv_path is None:
+            self._csv_to_stdout(rows)
+        else:
+            self._csv_to_file(rows)
+
+    @staticmethod
+    def _changeset_to_rows(time: str, changeset: dict) -> list[dict]:
+        rows = []
+        for change in changeset["changes"]:
+            rows.append(
+                {
+                    "time": time,
+                    "offset": change["offset"],
+                    "before": change["before"][0],
+                    "after": change["after"][0],
+                    "name": change.get("name", ""),
+                    "comment": changeset["comment"],
+                }
+            )
+        return rows
+
+    def _csv_to_file(self, rows: list[dict]):
+        mode = "a" if self.append_csv else "w"
+        with open(self.csv_path, mode, newline="") as csv_h:
+            writer = csv.DictWriter(csv_h, list(rows[0]))
+            if not self.append_csv:
+                writer.writeheader()
+            writer.writerows(rows)
+
+    @staticmethod
+    def _csv_to_stdout(rows: list[dict]):
+        if sys.platform == "win32":
+            writer = csv.DictWriter(sys.stdout, rows[0], lineterminator="\n")
+        else:
+            writer = csv.DictWriter(sys.stdout, rows[0])
+        writer.writeheader()
+        writer.writerows(rows)

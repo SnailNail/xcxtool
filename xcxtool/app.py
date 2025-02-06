@@ -1,5 +1,7 @@
 """Main entry point for xcxtool"""
 
+import sys
+
 from platformdirs import user_config_path
 from plumbum import cli, local, LocalPath
 
@@ -67,10 +69,10 @@ class XCXToolsCLI(cli.Application):
             "st/game",
         )
         if cemu_save_dir.exists():
-            print(f"Saved data found at {cemu_save_dir}")
+            print(f"Saved data found at {cemu_save_dir}", file=sys.stderr)
             self.cemu_save_dir = cemu_save_dir
         else:
-            print("Could not find saved data (Cemu NAND not found)")
+            print("Could not find saved data (Cemu NAND not found)", file=sys.stderr)
 
 
 XCXToolsCLI.subcommand("backup", BackupSave)
