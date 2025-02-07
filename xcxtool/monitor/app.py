@@ -64,6 +64,9 @@ class CompareSavedata(cli.Application):
         excludes=["--save-dir"],
         help="Use a specific file as the 'after' state",
     )
+    merge_changes: bool = cli.Flag(
+        ["-m", "--merge-results"], help="Merge changes in consecutive memory offsets"
+    )
 
     def main(self):
         if self.parent is None:
@@ -85,7 +88,10 @@ class CompareSavedata(cli.Application):
         comparator = monitor.Comparator(
             after_reader, self.include, self.exclude, before_data, named_ranges
         )
-        changes = comparator.compare()
+        if self.merge_changes:
+            changes = comparator.aggregate_compare()
+        else:
+            changes = comparator.compare()
         print(changes.format())
 
     def get_include_and_exclude(self):
@@ -157,6 +163,9 @@ class MonitorCemu(cli.Application):
     record: bool = cli.Flag(
         ["r", "record"], False, help="Record gameplay while monitoring"
     )
+    merge_changes: bool = cli.Flag(
+        ["-m", "--merge-results"], help="Merge changes in consecutive memory offsets"
+    )
     obs_host: str = cli.SwitchAttr(
         ["obs-host"],
         str,
@@ -198,7 +207,7 @@ class MonitorCemu(cli.Application):
                 rprint(e)
                 return 1
         else:
-            comp.monitor()
+            comp.monitor(aggregate_runs=self.merge_changes)
         reader.close()
 
     def get_include_and_exclude(self):
@@ -227,7 +236,7 @@ class MonitorCemu(cli.Application):
         try:
             if custom_record_dir:
                 obs.set_record_directory(custom_record_dir)
-            comparator.monitor_and_record(obs)
+            comparator.monitor_and_record(aggregate_runs=self.merge_changes)
         finally:
             obs.set_record_directory(old_record_dir)
 
@@ -393,6 +402,7 @@ class MonitorSearchJson(cli.Application):
     well as a plain number, a range can be specified as `start,stop` or as a named
     range.
     """
+
     _flags: re.RegexFlag = re.IGNORECASE
     pattern: re.Pattern
     data: dict[str, dict]
@@ -400,7 +410,8 @@ class MonitorSearchJson(cli.Application):
     offsets: list[range] = []
 
     simple_search: bool = cli.Flag(
-        ["s", "simple"], help="Do a simple string search, do not match regular expressions"
+        ["s", "simple"],
+        help="Do a simple string search, do not match regular expressions",
     )
     exact_match: bool = cli.Flag(
         ["e", "exact"], help="PATTERN must match the entire comment, not just a subset"
@@ -437,9 +448,11 @@ class MonitorSearchJson(cli.Application):
     def print_matches(self):
         for ts, match in self.matches.items():
             changes = self.data[ts]
-            deltas = [monitor.MemoryDelta(**delta)
-                      for delta in changes["changes"]
-                      if self.in_offsets(delta["offset"])]
+            deltas = [
+                monitor.MemoryDelta(**delta)
+                for delta in changes["changes"]
+                if self.in_offsets(delta["offset"])
+            ]
             comment = rich_highlight(changes["comment"], match.start(), match.end())
             rprint(ts, comment)
             for delta in deltas:

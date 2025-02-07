@@ -38,9 +38,26 @@ class MemoryDelta:
             before_str = format(self.before[0], value_format)
             after_str = format(self.after[0], value_format)
         else:
-            before_str = [format(i, value_format) for i in self.before]
-            after_str = [format(i, value_format) for i in self.after]
-        return f"{self.offset:{address_format}}: {before_str} -> {after_str}{name_suffix}"
+            before_str = self._format_long_delta(self.before)
+            after_str = self._format_long_delta(self.after)
+        return (
+            f"{self.offset:{address_format}}: {before_str} -> {after_str}{name_suffix}"
+        )
+
+    def _format_long_delta(
+        self,
+        delta: list[int],
+        chunk_size: int = 4,
+        value_sep: str = "",
+        chunk_sep: str = "_",
+    ) -> str:
+        out = ""
+        for offset, value in enumerate(delta, self.offset):
+            if not out or offset % chunk_size:
+                out = f"{out}{value_sep}{value:02x}"
+            else:
+                out = f"{out}{chunk_sep}{value:02x}"
+        return f"0x{out}"
 
     def append(self, new_before, new_after):
         self.before.append(new_before)
@@ -61,7 +78,10 @@ class CompareResult:
     ) -> str:
         out = f"{self.time:{datefmt}}\n"
         for c in self.changes:
-            out += f"  {c.offset:{addrfmt}}: {[format(i, valuefmt) for i in c.before]} -> {[format(i, valuefmt) for i in c.after]}\n"
+            before = [format(i, valuefmt) for i in c.before]
+            after = [format(i, valuefmt) for i in c.after]
+            name = f" ({c.name})" if c.name else ""
+            out += f"  {c.offset:{addrfmt}}: {before} -> {after}{name}\n"
         return out
 
     def to_json(self):
@@ -77,6 +97,7 @@ class CompareResult:
 
 class NamedRanges:
     """Class for storing and retrieving ranges by name"""
+
     def __init__(self, initial_ranges: dict[range, str] = None):
         if initial_ranges is None:
             initial_ranges = {}
@@ -90,7 +111,9 @@ class NamedRanges:
         The dictionary should be a mapping of strings to a sequence of
         (start, stop) pairs
         """
-        new_ranges = [(range(start, end), name) for name, (start, end) in config.items()]
+        new_ranges = [
+            (range(start, end), name) for name, (start, end) in config.items()
+        ]
         self.ranges.extend(new_ranges)
         self.ranges.sort(key=lambda t: len(t[0]))
 
@@ -169,13 +192,14 @@ class Comparator:
         for offset, (before, after) in enumerate(zip(self.previous, new_mem)):
             if not self._valid_offset(offset) or before == after:
                 continue
+            name = self.named_ranges.get_name(offset)
             if current_run is None:
-                current_run = MemoryDelta(offset, [before], [after])
+                current_run = MemoryDelta(offset, [before], [after], name)
             elif offset == current_run.next_offset:
                 current_run.append(before, after)
             else:
                 deltas.append(current_run)
-                current_run = MemoryDelta(offset, [before], [after])
+                current_run = MemoryDelta(offset, [before], [after], name)
 
         if current_run is not None:
             deltas.append(current_run)
@@ -273,7 +297,9 @@ class Comparator:
         return True
 
 
-def process_locations_from_monitor_json(json_path: PathLike) -> list[locations.Location]:
+def process_locations_from_monitor_json(
+    json_path: PathLike,
+) -> list[locations.Location]:
     with open(json_path) as f:
         data = json.load(f)
     found = 0
