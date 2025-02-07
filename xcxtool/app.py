@@ -54,7 +54,7 @@ class XCXToolsCLI(cli.Application):
         config.load_config(self.config_path)
         nand_root = config.get_preferred(self.cemu_nand_root, "xcxtool.nand_root")
         if not nand_root:
-            nand_root = user_config_path("Cemu", False, roaming=True) / "mlc0"
+            nand_root = user_config_path("Cemu", False, roaming=True) / "mlc01"
         region = config.get_preferred(self.region, "xcxtool.region")
         region_part = self._REGION_PARTS[region.upper()]
         persistent_id = config.get_preferred(
