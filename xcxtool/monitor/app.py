@@ -1,15 +1,17 @@
 """Monitor Cemu process for changes"""
 
 import csv
+import glob
 import json
 import os
 import re
 import sys
+from typing import Sequence, Iterable
 
 import rich.console
 from obsws_python import ReqClient
 from obsws_python.error import OBSSDKError
-from plumbum import cli, LocalPath
+from plumbum import cli, LocalPath, local
 
 from xcxtool import config, memory_reader
 from xcxtool.monitor import monitor
@@ -404,10 +406,8 @@ class MonitorSearchJson(cli.Application):
     """
 
     _flags: re.RegexFlag = re.IGNORECASE
-    pattern: re.Pattern
-    data: dict[str, dict]
-    matches: dict[str, re.Match]
     offsets: list[range] = []
+    pattern: re.Pattern
 
     simple_search: bool = cli.Flag(
         ["s", "simple"],
@@ -418,12 +418,18 @@ class MonitorSearchJson(cli.Application):
     )
 
     # noinspection PyPep8Naming
-    def main(self, PATTERN: str, SEARCH_PATH: cli.ExistingFile):
+    def main(self, PATTERN: str, *SEARCH_PATHS: str):
         self.pattern = re.compile(PATTERN, self._flags)
-        with open(SEARCH_PATH) as f:
-            self.data = json.load(f)
-        self.regex_search()
-        self.print_matches()
+        for search_path in _expand_globs(SEARCH_PATHS):
+            try:
+                data = _load_json(search_path)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Error loading {search_path}", file=sys.stderr)
+                print(e, file=sys.stderr)
+                continue
+            matches = self.regex_search(data)
+            if matches:
+                self.print_matches(data, matches, search_path)
 
     @cli.switch(["c", "case-sensitive"])
     def match_case(self):
@@ -435,33 +441,55 @@ class MonitorSearchJson(cli.Application):
         """Limit matches to changes at the specified offsets or range of offsets"""
         self.offsets = [parse_offset_ranges(o) for o in offsets]
 
-    def regex_search(self):
-        self.matches = {}
-        for ts, changeset in self.data.items():
+    def regex_search(self, data: dict[str, dict]) -> dict[str, re.Match]:
+        matches = {}
+        for ts, changeset in data.items():
+            if not self.in_offsets(
+                [change["offset"] for change in changeset["changes"]]
+            ):
+                continue
             if self.exact_match:
                 match = self.pattern.fullmatch(changeset["comment"])
             else:
                 match = self.pattern.search(changeset["comment"])
             if match:
-                self.matches[ts] = match
+                matches[ts] = match
+        return matches
 
-    def print_matches(self):
-        for ts, match in self.matches.items():
-            changes = self.data[ts]
+    def print_matches(
+        self,
+        data: dict[str, dict],
+        matches: dict[str, re.Match],
+        search_path: LocalPath = None,
+    ) -> None:
+        indent = ""
+        if search_path is not None:
+            rprint(
+                f"[bold green]{search_path.relative_to(local.cwd)}[/] ({len(matches)} matches):"
+            )
+            indent = "  "
+        for ts, match in matches.items():
+            changes = data[ts]
             deltas = [
                 monitor.MemoryDelta(**delta)
                 for delta in changes["changes"]
                 if self.in_offsets(delta["offset"])
             ]
-            comment = rich_highlight(changes["comment"], match.start(), match.end())
-            rprint(ts, comment)
+            comment = rich_highlight(
+                changes["comment"], match.start(), match.end(), "[bold red]"
+            )
+            rprint(indent + ts, comment, highlight=False)
             for delta in deltas:
-                rprint(f"  {delta}")
+                rprint(f"{indent}  {delta}", highlight=False)
 
-    def in_offsets(self, value: int) -> bool:
+    def in_offsets(self, values: int | Iterable[int]) -> bool:
         if not self.offsets:
             return True
-        return any(value in r for r in self.offsets)
+        if isinstance(values, int):
+            values = [values]
+        for value in values:
+            print(values)
+            return any(value in r for r in self.offsets)
 
 
 def parse_offset_ranges(range_input: str) -> range:
@@ -485,3 +513,24 @@ def rich_highlight(string: str, start: int, end: int, style: str = "[green]") ->
     if start == end:
         return string
     return string[:start] + style + string[start:end] + "[/]" + string[end:]
+
+
+def _expand_globs(args: Sequence[str]) -> list[LocalPath]:
+    new_args = []
+    if not args:
+        args = ["."]
+    for arg in args:
+        expanded = glob.glob(arg)
+        for path_str in expanded:
+            path = local.path(path_str)
+            if path.is_dir():
+                new_args.extend(path.glob("*.json"))
+                continue
+            if path.suffix.lower() == ".json":
+                new_args.append(path)
+    return new_args
+
+
+def _load_json(path: LocalPath) -> dict:
+    with open(path, "r") as j:
+        return json.load(j)
