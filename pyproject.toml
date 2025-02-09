@@ -25,7 +25,7 @@ keywords = ["xenoblade", "xenoblade x", "xenoblade chronicles x", "save"]
 dynamic = ["description", "version"]
 
 [project.scripts]
-xcxtool = "xcxtool.app:XCXToolsCLI.run"
+xcxtool = "xcxtool.main:XCXToolsCLI.run"
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]
