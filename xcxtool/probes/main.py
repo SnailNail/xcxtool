@@ -1,16 +1,16 @@
 """Subcommand for getting probe data from a save file"""
 
-import sys
 import webbrowser
 from collections import Counter
 
 from plumbum import cli, local, LocalPath
 
 from xcxtool import config, savefiles
+from xcxtool.app import XCXToolApplication
 from xcxtool.probes import data
 
 
-class FrontierNavTool(cli.Application):
+class FrontierNavTool(XCXToolApplication):
     """Utility to get FrontierNav probe inventory and layout
 
     By default, this will write a sites.csv and inventory.csv to the current working
@@ -59,7 +59,7 @@ class FrontierNavTool(cli.Application):
     @cli.positional(cli.ExistingFile)
     def main(self, target: LocalPath = None):
         if self.parent is None:
-            print("This application must be run as a subcommand of xcxtool")
+            self.error("This application must be run as a subcommand of xcxtool")
             return 2
 
         savedata = self.get_save_data(target)
@@ -97,10 +97,9 @@ class FrontierNavTool(cli.Application):
             return get_save_data_from_file(target)
         if self.parent.cemu_save_dir is not None:
             return get_save_data_from_file(self.parent.cemu_save_dir.join("gamedata"))
-        print(
+        self.error(
             "No save data found, please specify a gamedata file, or configure Cemu"
             "settings.",
-            file=sys.stderr,
         )
 
     def format_xenoprobes_inventory(self) -> str:
@@ -146,7 +145,7 @@ class FrontierNavTool(cli.Application):
 
     def do_output(self, file_data: str, file_name: str):
         if self.print or self.tee:
-            print(file_data)
+            self.out(file_data)
         if not self.print or self.tee:
             out_dir = self.get_output_dir()
             out_file = out_dir / file_name
@@ -159,7 +158,7 @@ class FrontierNavTool(cli.Application):
         try:
             return cli.ExistingDirectory(config_setting)
         except ValueError:
-            print("Configured output_dir does not exist, writing to current directory")
+            self.warning("Configured output_dir does not exist, writing to current directory")
             return local.path(".")
 
     def format_frontiernav_url(self) -> str:
@@ -170,11 +169,10 @@ class FrontierNavTool(cli.Application):
     def do_frontiernav(self) -> None:
         url = self.format_frontiernav_url()
         if self.print or self.tee:
-            print("# Frontiernav URL")
-            print(url)
+            self.out("# Frontiernav URL")
+            self.out(url)
         if not self.print or self.tee:
             webbrowser.open_new_tab(url)
-
 
     def _include_in_inventory(self, probe: data.Probe) -> str:
         if probe.xenoprobes_name in self._exclude:

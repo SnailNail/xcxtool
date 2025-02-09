@@ -1,12 +1,12 @@
 """Main entry point for xcxtool"""
-
-import sys
+import logging
 
 from platformdirs import user_config_path
 from plumbum import cli, local, LocalPath
 
 from . import __version__, __doc__ as description
 from . import config
+from .app import XCXToolApplication, INFO, WARNING
 from .backup import BackupSave
 from .locations import LocationTool
 from .monitor import MonitorCemu, CompareSavedata
@@ -14,7 +14,7 @@ from .probes import FrontierNavTool
 from .savefiles import DecryptSave, EncryptSave
 
 
-class XCXToolsCLI(cli.Application):
+class XCXToolsCLI(XCXToolApplication):
     PROGNAME = "xcxtool"
     DESCRIPTION = description
     VERSION = __version__
@@ -50,6 +50,21 @@ class XCXToolsCLI(cli.Application):
         help="Region of the emulated game (determines save path)",
     )
 
+    @cli.switch(["v", "verbose"], excludes=["quiet", "debug"])
+    def verbose(self):
+        """Display more informational output"""
+        self.message_level = INFO
+
+    @cli.switch(["q", "quiet"], excludes=["verbose", "debug"])
+    def quiet(self):
+        """Supress informational output (warnings and errors will still be shown)"""
+        self.message_level = WARNING
+
+    @cli.switch(["debug"], excludes=["verbose", "quiet"])
+    def _debug(self):
+        """Show debug output"""
+        self.message_level = logging.DEBUG
+
     def main(self):
         config.load_config(self.config_path)
         nand_root = config.get_preferred(self.cemu_nand_root, "xcxtool.nand_root")
@@ -69,10 +84,10 @@ class XCXToolsCLI(cli.Application):
             "st/game",
         )
         if cemu_save_dir.exists():
-            print(f"Saved data found at {cemu_save_dir}", file=sys.stderr)
+            self.info(f"Saved data found at {cemu_save_dir}")
             self.cemu_save_dir = cemu_save_dir
         else:
-            print("Could not find saved data (Cemu NAND not found)", file=sys.stderr)
+            self.warning("Could not find saved data (Cemu NAND not found)")
 
 
 XCXToolsCLI.subcommand("backup", BackupSave)

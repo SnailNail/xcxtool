@@ -1,7 +1,10 @@
 """Main config module functions"""
 
+import logging
 import sys
 from typing import Any
+
+from xcxtool.app import LOGGER_NAME, SUCCESS
 
 if sys.version_info >= (3, 11):
     # noinspection PyUnresolvedReferences
@@ -18,15 +21,15 @@ from xcxtool.config.defaults import CONFIG_DEFAULTS
 __all__ = ["load_config", "get", "get_preferred", "get_section"]
 
 _config = {}
-
+_log = logging.getLogger(LOGGER_NAME)
 
 def load_config(config_file: LocalPath = None):
     if config_file is None:
         config_file = find_config()
     if config_file is None or not config_file.exists():
-        print("Config file not found", file=sys.stderr)
+        _log.warning("Config file not found")
         return
-    print(f"Using config file: {config_file}", file=sys.stderr)
+    _log.log(SUCCESS, f"Using config file: {config_file}")
     with open(config_file, "rb") as f:
         new_config = tomllib.load(f)
         _config.update(new_config)

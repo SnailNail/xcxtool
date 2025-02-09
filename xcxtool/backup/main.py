@@ -3,16 +3,16 @@ import shutil
 import sys
 
 from plumbum import cli, local, LocalPath
-from rich import print as rprint
 
 from .. import config, memory_reader
 from . import tokens, formatter
+from ..app import XCXToolApplication
 
 
 _archive_formats = (f[0] for f in shutil.get_archive_formats())
 
 
-class BackupSave(cli.Application):
+class BackupSave(XCXToolApplication):
     """Copy/backups Cemu save files.
 
     See xcxtool --help for global options
@@ -37,7 +37,7 @@ class BackupSave(cli.Application):
 
     def main(self):
         if self.parent is None:
-            print("This utility must be run via the main xcxtool application", file=sys.stderr)
+            self.error("This utility must be run via the main xcxtool application")
             return 2
 
         if self.backup_name is None:
@@ -49,12 +49,12 @@ class BackupSave(cli.Application):
 
         save_path = self.get_save_path()
         if save_path is None:
-            rprint("[red]No save data path specified[/red]", file=sys.stderr)
+            self.error("[red]No save data path specified[/red]")
             return 2
 
         self.gamedata = save_path.join("st", "game", "gamedata")
         if not self.gamedata.exists():
-            rprint(f"[red]No save data found in {save_path}", file=sys.stderr)
+            self.error(f"[red]No save data found in {save_path}")
             return 2
 
         reader = memory_reader.SaveFileReader(self.gamedata)
@@ -69,10 +69,10 @@ class BackupSave(cli.Application):
 
         backup_dir = local.path(config.get("backup.backup_directory"))
         if not backup_dir.exists():
-            rprint(f"[red]Backup directory not found (got '{self.backup_dir}')")
+            self.error(f"[red]Backup directory not found (got '{self.backup_dir}')")
             return
         if not backup_dir.is_dir():
-            rprint(f"[red]Backup path is not a directory (got '{self.backup_dir}')")
+            self.error(f"[red]Backup path is not a directory (got '{self.backup_dir}')")
             return
         return backup_dir
 
@@ -96,7 +96,7 @@ class BackupSave(cli.Application):
         return field_values
 
     def do_backup(self, backup_name: str, backup_dir: LocalPath, save_dir: LocalPath):
-        rprint(f"Backing up from: [green]{save_dir}[/green]\n"
+        self.success(f"Backing up from: [green]{save_dir}[/green]\n"
                f"to: [green]{backup_dir}[/green]\n"
                f"With filename [green]{backup_name}.zip[/green]")
         base_name = backup_dir / backup_name
@@ -136,7 +136,7 @@ class BackupSave(cli.Application):
             "{datetime}": "Current date and time (datetime.datetime)",
             "{mtime}": "Last modified date and time of the save data file (datetime.datetime)",
         }
-        print(preamble)
+        self.out(preamble)
         for token, description in token_descriptions.items():
-            rprint(f"  [bold]{token:16}[/bold] {description}")
+            self.out(f"  [bold]{token:16}[/bold] {description}")
         sys.exit()

@@ -3,21 +3,21 @@
 import csv
 import glob
 import json
+import logging
 import os
 import re
 import sys
 from typing import Sequence, Iterable
 
-import rich.console
 from obsws_python import ReqClient
 from obsws_python.error import OBSSDKError
 from plumbum import cli, LocalPath, local
 
 from xcxtool import config, memory_reader
+from xcxtool.app import XCXToolApplication, LOGGER_NAME
 from xcxtool.monitor import monitor
 
-_console = rich.console.Console()
-rprint = _console.print
+_log = logging.getLogger(LOGGER_NAME)
 
 
 def _split_include_exclude(arg: str) -> range:
@@ -29,7 +29,7 @@ def _split_include_exclude(arg: str) -> range:
     return range(start, end)
 
 
-class CompareSavedata(cli.Application):
+class CompareSavedata(XCXToolApplication):
     """Compare gamedata files for changes"""
 
     DESCRIPTION_MORE = """Performs a simple byte-to-byte comparison of save data and 
@@ -72,12 +72,12 @@ class CompareSavedata(cli.Application):
 
     def main(self):
         if self.parent is None:
-            print("This app must be run as a subcommand of xcxtool")
+            self.error("This app must be run as a subcommand of xcxtool")
             return 2
 
         self.get_include_and_exclude()
-        print("Include:", self.include)
-        print("Exclude:", self.exclude)
+        self.info("Include:", self.include)
+        self.info("Exclude:", self.exclude)
 
         self.get_save_dir()
 
@@ -94,7 +94,7 @@ class CompareSavedata(cli.Application):
             changes = comparator.aggregate_compare()
         else:
             changes = comparator.compare()
-        print(changes.format())
+        self.out(changes.format(), highlight=True)
 
     def get_include_and_exclude(self):
         if not self.include:
@@ -109,19 +109,19 @@ class CompareSavedata(cli.Application):
             try:
                 self.save_directory = cli.ExistingDirectory(configured)
             except ValueError:
-                print("Configured save_directory is not a directory")
+                self.warning("Configured save_directory is not a directory")
         self.save_directory = self.parent.cemu_save_dir
 
     def get_before_data(self) -> bytes | None:
         if self.before_file is None and self.save_directory is not None:
             self.before_file = self.save_directory.join("gamedata_")
-        print("Before:", self.before_file)
+        self.success(f"Before: {self.before_file}")
         try:
             before = memory_reader.SaveFileReader(self.before_file)
         except TypeError:  # The encryption key can't be inferred from the data:
-            print("Before save data could not be read", file=sys.stderr)
+            self.error("Before save data could not be read")
         except FileNotFoundError:
-            print("Could not find savedata", self.before_file, file=sys.stderr)
+            self.error(f"Could not find savedata: {self.before_file}")
         else:
             return before.data
         return
@@ -129,13 +129,13 @@ class CompareSavedata(cli.Application):
     def get_after(self) -> memory_reader.SaveDataReader | None:
         if self.after_file is None and self.save_directory is not None:
             self.after_file = self.save_directory.join("gamedata")
-        print("After:", self.after_file)
+        self.success(f"After: {self.after_file}" )
         try:
             return memory_reader.SaveFileReader(self.after_file)
         except TypeError:
-            print("Could not decrypt save data", self.after_file, file=sys.stderr)
+            self.error(f"Could not decrypt save data {self.after_file}")
         except FileNotFoundError:
-            print("Could not find savedata", self.before_file, file=sys.stderr)
+            self.error(f"Could not find savedata {self.after_file}")
         return
 
 
@@ -143,7 +143,7 @@ def ranges_from_config(config_key):
     return [range(*pair) for pair in config.get(config_key)]
 
 
-class MonitorCemu(cli.Application):
+class MonitorCemu(XCXToolApplication):
     """Monitor Cemu process memory for changes"""
 
     CALL_MAIN_IF_NESTED_COMMAND = False
@@ -199,14 +199,14 @@ class MonitorCemu(cli.Application):
             try:
                 self._record(comp)
             except ConnectionRefusedError as e:
-                rprint(
+                self.error(
                     "[red]Could not connect to OBS Websocket. Is OBS running and correctly configured?[/]"
                 )
-                rprint(e)
+                self.error(e, rich_highlight=True)
                 return 1
             except OBSSDKError as e:
-                rprint("[red]Error processing OBS Websocket request[/]")
-                rprint(e)
+                self.error("[red]Error processing OBS Websocket request[/]")
+                self.error(e, rich_highlight=True)
                 return 1
         else:
             comp.monitor(aggregate_runs=self.merge_changes)
@@ -244,7 +244,7 @@ class MonitorCemu(cli.Application):
 
 
 @MonitorCemu.subcommand("process-json")
-class MonitorProcessJson(cli.Application):
+class MonitorProcessJson(XCXToolApplication):
     """Process the json data produced when recording gameplay with monitoring"""
 
     json_path: LocalPath
@@ -287,7 +287,7 @@ class MonitorProcessJson(cli.Application):
     @cli.positional(cli.ExistingFile)
     def main(self, json_path: LocalPath, csv_path: LocalPath = None):
         if not json_path.is_file():
-            print("json_path must be a JSON file")
+            self.error("json_path must be a JSON file")
             return 2
         try:
             self.json_path = json_path
@@ -299,10 +299,10 @@ class MonitorProcessJson(cli.Application):
             elif self.csv:
                 return self.to_csv()
             else:
-                print("Re-run with one of '--locations', '--annotate' or '--csv'")
+                self.error("Re-run with one of '--locations', '--annotate' or '--csv'")
                 return 2
         except KeyboardInterrupt:
-            print("Caught Ctrl-C, exiting (no changes will be saved)")
+            self.out("Caught Ctrl-C, exiting (no changes will be saved)")
 
     def do_locations(self):
         locations = monitor.process_locations_from_monitor_json(self.json_path)
@@ -310,16 +310,16 @@ class MonitorProcessJson(cli.Application):
         if self.decimal:
             max_len = max(len(l.name) for l in locations)
         else:
-            print("new_locations = [")
+            self.out("new_locations = [")
         for location in sorted(locations, key=lambda l: l.location_id):
             if self.decimal:
-                print(
+                self.out(
                     f"{location.name:{max_len}}  {location.location_id:>4d}: {location.offset} {location.bit:3d}"
                 )
             else:
-                print(f"    {location},")
+                self.out(f"    {location},")
         if not self.decimal:
-            print("]")
+            self.out("]")
 
     def do_annotations(self):
         original_stat = self.json_path.stat()
@@ -328,22 +328,22 @@ class MonitorProcessJson(cli.Application):
             return 1
         total_changes = len(change_data)
 
-        print(f"Annotating {total_changes} changes.")
-        print("Press Ctrl-C to exit without saving, enter Ctrl-Z to save and quit")
+        self.out(f"Annotating {total_changes} changes.", highlight=True)
+        self.out("Press [bold]Ctrl-C[/] to exit without saving, enter [bold]Ctrl-Z[/] to save and quit")
 
         for n, (timestamp, changeset) in enumerate(change_data.items(), 1):
             memory_deltas = [
                 monitor.MemoryDelta(**change) for change in changeset["changes"]
             ]
-            rprint(f"[bold green]{timestamp}", f"({n}/{total_changes})")
+            self.out(f"[bold green]{timestamp}", f"({n}/{total_changes})", highlight=True)
             for delta in memory_deltas:
-                rprint(f"  {delta}")
+                self.out(f"  {delta}", highlight=True)
             if current_comment := changeset.get("comment"):
-                rprint(f"[bold]Comment:[/] {current_comment}")
+                self.out(f"[bold]Comment:[/] {current_comment}")
             try:
-                comment = input("Annotation (enter to keep current): ")
+                comment = self.output_console.input("Annotation ([bold]enter[/] to keep current): ")
             except EOFError:
-                print("Caught Ctrl-Z, saving and exiting")
+                self.out("Caught Ctrl-Z, saving and exiting")
                 break
             if comment:
                 changeset["comment"] = comment
@@ -366,8 +366,8 @@ class MonitorProcessJson(cli.Application):
         try:
             self._csv_to_file(rows)
         except (OSError, csv.Error) as e:
-            print("Error writing csv file:", file=sys.stderr)
-            print(e,file=sys.stderr)
+            self.error("Error writing csv file:")
+            self.error(e)
             return 1
 
     def _changeset_to_rows(self, time: str, changeset: dict) -> list[dict]:
@@ -407,7 +407,7 @@ class MonitorProcessJson(cli.Application):
 
 
 @MonitorCemu.subcommand("grep")
-class MonitorSearchJson(cli.Application):
+class MonitorSearchJson(XCXToolApplication):
     """Search monitor JSON output for patterns.
 
     By default, PATTERN is treated as a regular expression and is searched for in
@@ -475,8 +475,9 @@ class MonitorSearchJson(cli.Application):
     ) -> None:
         indent = ""
         if search_path is not None:
-            rprint(
-                f"[bold green]{search_path.relative_to(local.cwd)}[/] ({len(matches)} matches):"
+            self.out(
+                f"[bold green]{search_path.relative_to(local.cwd)}[/] ({len(matches)} matches):",
+                highlight=True,
             )
             indent = "  "
         for ts, match in matches.items():
@@ -489,9 +490,9 @@ class MonitorSearchJson(cli.Application):
             comment = rich_highlight(
                 changes["comment"], match.start(), match.end(), "[bold red]"
             )
-            rprint(indent + ts, comment, highlight=False)
+            self.out(indent + ts, comment)
             for delta in deltas:
-                rprint(f"{indent}  {delta}", highlight=False)
+                self.out(f"{indent}  {delta}")
 
     def in_offsets(self, values: int | Iterable[int]) -> bool:
         if not self.offsets:
@@ -499,7 +500,6 @@ class MonitorSearchJson(cli.Application):
         if isinstance(values, int):
             values = [values]
         for value in values:
-            print(values)
             return any(value in r for r in self.offsets)
 
 
@@ -547,6 +547,6 @@ def _load_json(path: LocalPath) -> dict | None:
         with open(path, "r") as j:
             return json.load(j)
     except (json.JSONDecodeError, OSError) as e:
-        print(f"Error reading JSON file {path}", file=sys.stderr)
-        print(e, sys.stderr)
+        _log.error(f"Error reading JSON file {path}")
+        _log.error(e)
     return None

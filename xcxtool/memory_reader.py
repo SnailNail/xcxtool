@@ -4,6 +4,7 @@ Initial implementation uses Pymem to access Cemu's memory. It may be possible
 to use TCP Gecko to read the game running on a real WiiU in the future.
 """
 
+import logging
 import os
 import sys
 import typing
@@ -11,6 +12,9 @@ import typing
 import pymem
 
 from xcxtool import savefiles
+from xcxtool.app import LOGGER_NAME, SUCCESS
+
+_log = logging.getLogger(LOGGER_NAME)
 
 
 class SaveDataReader(typing.Protocol):
@@ -31,7 +35,7 @@ class PymemReader:
         self.pymem = reader
         anchor_addr = reader.pattern_scan_all(anchor_pattern)
         if anchor_addr is None:
-            print("Anchor pattern not found", file=sys.stderr)
+            _log.error("Anchor pattern not found")
             raise ValueError("Save data not found")
         self.data_start = anchor_addr + anchor_offset
 
@@ -63,14 +67,13 @@ def connect_cemu(process_name: str = "cemu.exe") -> PymemReader | None:
     try:
         reader = PymemReader(pymem.Pymem(process_name))
     except pymem.exception.ProcessNotFound:
-        print(
-            f"Could not find {process_name} process, dynamic file names not available",
-            file=sys.stderr,
+        _log.warning(
+            f"Could not find {process_name} process, dynamic file names not available"
         )
         return None
     except ValueError as e:
-        print(e.args[0])
+        _log.error(e.args[0])
         return None
     else:
-        print(f"Found Cemu at {reader.pymem.base_address:#018x}")
+        _log.log(SUCCESS, f"Found Cemu at {reader.pymem.base_address:#018x}")
         return reader
