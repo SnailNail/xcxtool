@@ -238,7 +238,7 @@ class MonitorCemu(cli.Application):
         try:
             if custom_record_dir:
                 obs.set_record_directory(custom_record_dir)
-            comparator.monitor_and_record(aggregate_runs=self.merge_changes)
+            comparator.monitor_and_record(obs, aggregate_runs=self.merge_changes)
         finally:
             obs.set_record_directory(old_record_dir)
 
