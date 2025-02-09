@@ -358,12 +358,13 @@ class MonitorProcessJson(cli.Application):
         else:
             self._csv_to_file(rows)
 
-    @staticmethod
-    def _changeset_to_rows(time: str, changeset: dict) -> list[dict]:
+    def _changeset_to_rows(self, time: str, changeset: dict) -> list[dict]:
         rows = []
+        filename = self.json_path.relative_to(local.cwd)
         for change in changeset["changes"]:
             rows.append(
                 {
+                    "filename": filename,
                     "time": time,
                     "offset": change["offset"],
                     "before": change["before"][0],
