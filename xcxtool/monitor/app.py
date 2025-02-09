@@ -286,17 +286,21 @@ class MonitorProcessJson(cli.Application):
 
     @cli.positional(cli.ExistingFile)
     def main(self, json_path: LocalPath, csv_path: LocalPath = None):
+        if not json_path.is_file():
+            print("json_path must be a JSON file")
+            return 2
         try:
             self.json_path = json_path
             self.csv_path = csv_path
             if self.locations:
                 self.do_locations()
             elif self.annotate:
-                self.do_annotations()
+                return self.do_annotations()
             elif self.csv:
-                self.to_csv()
+                return self.to_csv()
             else:
                 print("Re-run with one of '--locations', '--annotate' or '--csv'")
+                return 2
         except KeyboardInterrupt:
             print("Caught Ctrl-C, exiting (no changes will be saved)")
 
@@ -319,8 +323,9 @@ class MonitorProcessJson(cli.Application):
 
     def do_annotations(self):
         original_stat = self.json_path.stat()
-        with open(self.json_path) as f:
-            change_data = json.load(f)
+        change_data = _load_json(self.json_path)
+        if change_data is None:
+            return 1
         total_changes = len(change_data)
 
         print(f"Annotating {total_changes} changes.")
@@ -344,19 +349,26 @@ class MonitorProcessJson(cli.Application):
                 changeset["comment"] = comment
 
         with open(self.json_path, "w") as f:
+            # noinspection PyTypeChecker
             json.dump(change_data, f, indent=2)
         os.utime(self.json_path, (original_stat.st_atime, original_stat.st_mtime))
 
     def to_csv(self):
-        with open(self.json_path) as f:
-            data = json.load(f)
+        data = _load_json(self.json_path)
+        if data is None:
+            return 1
         rows = []
         for time, changeset in data.items():
             rows.extend(self._changeset_to_rows(time, changeset))
         if self.csv_path is None:
             self._csv_to_stdout(rows)
-        else:
+            return
+        try:
             self._csv_to_file(rows)
+        except (OSError, csv.Error) as e:
+            print("Error writing csv file:", file=sys.stderr)
+            print(e,file=sys.stderr)
+            return 1
 
     def _changeset_to_rows(self, time: str, changeset: dict) -> list[dict]:
         rows = []
@@ -378,6 +390,7 @@ class MonitorProcessJson(cli.Application):
     def _csv_to_file(self, rows: list[dict]):
         mode = "a" if self.append_csv else "w"
         with open(self.csv_path, mode, newline="") as csv_h:
+            # noinspection PyTypeChecker
             writer = csv.DictWriter(csv_h, list(rows[0]))
             if not self.append_csv:
                 writer.writeheader()
@@ -422,11 +435,8 @@ class MonitorSearchJson(cli.Application):
     def main(self, PATTERN: str, *SEARCH_PATHS: str):
         self.pattern = re.compile(PATTERN, self._flags)
         for search_path in _expand_globs(SEARCH_PATHS):
-            try:
-                data = _load_json(search_path)
-            except (json.JSONDecodeError, OSError) as e:
-                print(f"Error loading {search_path}", file=sys.stderr)
-                print(e, file=sys.stderr)
+            data = _load_json(search_path)
+            if data is None:
                 continue
             matches = self.regex_search(data)
             if matches:
@@ -532,6 +542,11 @@ def _expand_globs(args: Sequence[str]) -> list[LocalPath]:
     return new_args
 
 
-def _load_json(path: LocalPath) -> dict:
-    with open(path, "r") as j:
-        return json.load(j)
+def _load_json(path: LocalPath) -> dict | None:
+    try:
+        with open(path, "r") as j:
+            return json.load(j)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Error reading JSON file {path}", file=sys.stderr)
+        print(e, sys.stderr)
+    return None
