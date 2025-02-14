@@ -6,7 +6,7 @@ import json
 import time
 from os import PathLike
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, Generator
 
 import obsws_python
 
@@ -258,6 +258,19 @@ class Comparator:
             print("Caught Ctrl-C, stopping monitor")
 
         return changes
+
+    def monitor_gen(self, aggregate_runs: bool = False) -> Generator[CompareResult, None, None]:
+        """Generator version of .monitor().
+
+        Yields CompareResults
+        """
+        if aggregate_runs:
+            compare_func = self.aggregate_compare
+        else:
+            compare_func = self.compare
+
+        while True:
+            yield compare_func()
 
     def monitor_and_record(
         self,

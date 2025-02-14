@@ -1,6 +1,7 @@
 """Monitor Cemu process for changes"""
 
 import csv
+import datetime
 import glob
 import json
 import logging
@@ -129,7 +130,7 @@ class CompareSavedata(XCXToolApplication):
     def get_after(self) -> memory_reader.SaveDataReader | None:
         if self.after_file is None and self.save_directory is not None:
             self.after_file = self.save_directory.join("gamedata")
-        self.success(f"After: {self.after_file}" )
+        self.success(f"After: {self.after_file}")
         try:
             return memory_reader.SaveFileReader(self.after_file)
         except TypeError:
@@ -148,6 +149,7 @@ class MonitorCemu(XCXToolApplication):
 
     CALL_MAIN_IF_NESTED_COMMAND = False
 
+    comp: monitor.Comparator
     obs: ReqClient
 
     include: list[range] = cli.SwitchAttr(
@@ -167,6 +169,12 @@ class MonitorCemu(XCXToolApplication):
     )
     merge_changes: bool = cli.Flag(
         ["-m", "--merge-results"], help="Merge changes in consecutive memory offsets"
+    )
+    write_json: LocalPath = cli.SwitchAttr(
+        ["j", "write"],
+        local.path,
+        help="Write results of the monitoring session to this file as JSON. Note that the "
+             "--record function automatically writes a JSON log next to the recording",
     )
     obs_host: str = cli.SwitchAttr(
         ["obs-host"],
@@ -189,7 +197,7 @@ class MonitorCemu(XCXToolApplication):
         self.get_include_and_exclude()
         named_ranges = monitor.NamedRanges()
         named_ranges.add_from_config(config.get_section("named_ranges"))
-        comp = monitor.Comparator(
+        self.comp = monitor.Comparator(
             reader,
             include=self.include,
             exclude=self.exclude,
@@ -197,7 +205,7 @@ class MonitorCemu(XCXToolApplication):
         )
         if self.record:
             try:
-                self._record(comp)
+                self._record(self.comp)
             except ConnectionRefusedError as e:
                 self.error(
                     "[red]Could not connect to OBS Websocket. Is OBS running and correctly configured?[/]"
@@ -208,9 +216,36 @@ class MonitorCemu(XCXToolApplication):
                 self.error("[red]Error processing OBS Websocket request[/]")
                 self.error(e, rich_highlight=True)
                 return 1
+            finally:
+                reader.close()
         else:
-            comp.monitor(aggregate_runs=self.merge_changes)
+            self.do_monitor(False, self.merge_changes)
         reader.close()
+
+    def do_monitor(
+        self, quiet: bool, aggregate_runs: bool
+    ) -> dict[str, monitor.CompareResult]:
+
+        changes = {}
+        monitor_start = datetime.datetime.now()
+        monitor_gen = self.comp.monitor_gen(aggregate_runs)
+        self.success(f"Started monitor at {monitor_start}")
+        try:
+            for changeset in monitor_gen:
+                if not changeset:
+                    continue
+                ts = _timedelta_to_hms(changeset.time - monitor_start)
+                changes[ts] = changeset
+                if quiet:
+                    continue
+                self.out(f"[bold]{ts}")
+                self._print_changes(changeset)
+
+        except KeyboardInterrupt:
+            self.success("Caught Ctrl-C, stopping monitor")
+            monitor_gen.close()
+
+        return changes
 
     def get_include_and_exclude(self):
         if not self.include:
@@ -241,6 +276,16 @@ class MonitorCemu(XCXToolApplication):
             comparator.monitor_and_record(obs, aggregate_runs=self.merge_changes)
         finally:
             obs.set_record_directory(old_record_dir)
+
+    def _print_changes(self, changeset: monitor.CompareResult):
+        for change in changeset.changes:
+            self.out(change, highlight=True)
+
+
+def _timedelta_to_hms(delta: datetime.timedelta) -> str:
+    hours, rest = divmod(delta.total_seconds(), 3600)
+    minutes, seconds = divmod(rest, 60)
+    return f"{int(hours)}:{int(minutes):02d}:{seconds:06.3f}"
 
 
 @MonitorCemu.subcommand("process-json")
@@ -329,19 +374,25 @@ class MonitorProcessJson(XCXToolApplication):
         total_changes = len(change_data)
 
         self.out(f"Annotating {total_changes} changes.", highlight=True)
-        self.out("Press [bold]Ctrl-C[/] to exit without saving, enter [bold]Ctrl-Z[/] to save and quit")
+        self.out(
+            "Press [bold]Ctrl-C[/] to exit without saving, enter [bold]Ctrl-Z[/] to save and quit"
+        )
 
         for n, (timestamp, changeset) in enumerate(change_data.items(), 1):
             memory_deltas = [
                 monitor.MemoryDelta(**change) for change in changeset["changes"]
             ]
-            self.out(f"[bold green]{timestamp}", f"({n}/{total_changes})", highlight=True)
+            self.out(
+                f"[bold green]{timestamp}", f"({n}/{total_changes})", highlight=True
+            )
             for delta in memory_deltas:
                 self.out(f"  {delta}", highlight=True)
             if current_comment := changeset.get("comment"):
                 self.out(f"[bold]Comment:[/] {current_comment}")
             try:
-                comment = self.output_console.input("Annotation ([bold]enter[/] to keep current): ")
+                comment = self.output_console.input(
+                    "Annotation ([bold]enter[/] to keep current): "
+                )
             except EOFError:
                 self.out("Caught Ctrl-Z, saving and exiting")
                 break
