@@ -1,5 +1,6 @@
 """Monitor Cemu process for changes"""
 
+import contextlib
 import csv
 import datetime
 import glob
@@ -8,10 +9,11 @@ import logging
 import os
 import re
 import sys
-from typing import Sequence, Iterable
+import time
+from typing import Sequence, Iterable, Generator
 
 from obsws_python import ReqClient
-from obsws_python.error import OBSSDKError
+from obsws_python.error import OBSSDKError, OBSSDKRequestError
 from plumbum import cli, LocalPath, local
 
 from xcxtool import config, memory_reader
@@ -150,7 +152,7 @@ class MonitorCemu(XCXToolApplication):
     CALL_MAIN_IF_NESTED_COMMAND = False
 
     comp: monitor.Comparator
-    obs: ReqClient
+    recording: LocalPath = None
 
     include: list[range] = cli.SwitchAttr(
         ["-i", "--include"],
@@ -203,24 +205,28 @@ class MonitorCemu(XCXToolApplication):
             exclude=self.exclude,
             named_ranges=named_ranges,
         )
-        if self.record:
-            try:
-                self._record(self.comp)
-            except ConnectionRefusedError as e:
-                self.error(
-                    "[red]Could not connect to OBS Websocket. Is OBS running and correctly configured?[/]"
-                )
-                self.error(e, rich_highlight=True)
-                return 1
-            except OBSSDKError as e:
-                self.error("[red]Error processing OBS Websocket request[/]")
-                self.error(e, rich_highlight=True)
-                return 1
-            finally:
-                reader.close()
-        else:
-            self.do_monitor(False, self.merge_changes)
-        reader.close()
+        try:
+            with self.do_recording():
+                changes = self.do_monitor(False, self.merge_changes)
+
+        except ConnectionRefusedError as e:
+            self.error(
+                "[red]Could not connect to OBS Websocket. Is OBS running and correctly configured?[/]"
+            )
+            self.error(e, rich_highlight=True)
+            return 1
+        except OBSSDKError as e:
+            self.error("[red]Error processing OBS Websocket request[/]")
+            self.error(e, rich_highlight=True)
+            return 1
+        finally:
+            reader.close()
+
+        if self.recording is not None:
+            json_file = self.recording.with_suffix(".json")
+            self.write_output_to_json(changes, json_file)
+        elif self.write_json:
+            self.write_output_to_json(changes)
 
     def do_monitor(
         self, quiet: bool, aggregate_runs: bool
@@ -228,7 +234,7 @@ class MonitorCemu(XCXToolApplication):
 
         changes = {}
         monitor_start = datetime.datetime.now()
-        monitor_gen = self.comp.monitor_gen(aggregate_runs)
+        monitor_gen = self.comp.monitor(aggregate_runs)
         self.success(f"Started monitor at {monitor_start}")
         try:
             for changeset in monitor_gen:
@@ -253,33 +259,63 @@ class MonitorCemu(XCXToolApplication):
         if not self.exclude:
             self.exclude.extend(ranges_from_config("compare.exclude"))
 
+    @contextlib.contextmanager
+    def do_recording(self) -> Generator[None, None, None]:
+        """Set up the OBS client and run monitor-and-record method
+
+        May raise OBSSDKError (or a subclass), ConnectionRefusedError or
+        ValueError
+        """
+        if not self.record:
+            yield
+            return
+
+        obs = self._get_obs_client()
+        old_record_dir = obs.get_record_directory().record_directory
+        custom_record_dir = local.path(config.get("compare.recording_dir"))
+        try:
+            self._set_obs_output_dir(obs, custom_record_dir)
+            obs.start_record()
+            yield
+            recording = obs.stop_record()
+        finally:
+            self._set_obs_output_dir(obs, old_record_dir)
+
+        self.recording = local.path(recording.output_path)
+        self.success(f"Recording saved to {self.recording}")
+
+    def write_output_to_json(self, changes: dict[str, monitor.CompareResult], path: LocalPath = None):
+        if path is None:
+            path = self.write_json
+        with open(path, "w") as f:
+            json.dump(changes, f, indent=2)
+        self.success(f"Changes written to {path}")
+
     def _get_obs_client(self):
         obs = ReqClient(
             host=config.get_preferred(self.obs_host, "compare.obs_host"),
             port=config.get_preferred(self.obs_port, "compare.obs_port"),
             password=config.get_preferred(self.obs_password, "compare.obs_password"),
         )
+        obs.logger.setLevel(50)
         return obs
 
-    def _record(self, comparator: monitor.Comparator) -> None:
-        """Set up the OBS client and run monitor-and-record method
-
-        May raise OBSSDKError (or a subclass), ConnectionRefusedError or
-        ValueError
-        """
-        obs = self._get_obs_client()
-        old_record_dir = obs.get_record_directory().record_directory
-        custom_record_dir = config.get("compare.recording_dir")
-        try:
-            if custom_record_dir:
-                obs.set_record_directory(custom_record_dir)
-            comparator.monitor_and_record(obs, aggregate_runs=self.merge_changes)
-        finally:
-            obs.set_record_directory(old_record_dir)
+    @staticmethod
+    def _set_obs_output_dir(client: ReqClient, record_dir: LocalPath, timeout: float = 2.5):
+        start = time.monotonic()
+        while True:
+            try:
+                client.set_record_directory(record_dir)
+            except OBSSDKRequestError as e:
+                if e.code != 500 or (time.monotonic() - start > timeout):
+                    raise
+                time.sleep(0.2)
+            else:
+                break
 
     def _print_changes(self, changeset: monitor.CompareResult):
         for change in changeset.changes:
-            self.out(change, highlight=True)
+            self.out(f"  {change}", highlight=True)
 
 
 def _timedelta_to_hms(delta: datetime.timedelta) -> str:
@@ -552,6 +588,7 @@ class MonitorSearchJson(XCXToolApplication):
             values = [values]
         for value in values:
             return any(value in r for r in self.offsets)
+        return False
 
 
 def parse_offset_ranges(range_input: str) -> range:

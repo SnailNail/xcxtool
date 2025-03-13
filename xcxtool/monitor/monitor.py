@@ -3,12 +3,8 @@
 import dataclasses
 import datetime
 import json
-import time
 from os import PathLike
-from pathlib import Path
 from typing import Any, Sequence, Generator
-
-import obsws_python
 
 from xcxtool.memory_reader import SaveDataReader
 from xcxtool.data import locations
@@ -207,60 +203,8 @@ class Comparator:
         self.previous = new_mem
         return CompareResult(now, deltas)
 
-    def monitor(
-        self, interval: float = 1.0, *, quiet: bool = False, aggregate_runs: bool = True
-    ):
-        """Continuously compare memory states and interval seconds.
-
-        If quiet is True, no output will be printed, only a dictionary of changes
-        will be returned
-
-        If aggregate_runs is True, changes in continuous memory blocks will be
-        aggregated into a single result
-        """
-        if interval < 0.5:
-            raise ValueError("interval should be greater than 0.5 seconds")
-        return self._monitor(interval, quiet=quiet, aggregate_runs=aggregate_runs)
-
-    def _monitor(self, interval: float, *, quiet: bool, aggregate_runs: bool):
-        if aggregate_runs:
-            compare_func = self.aggregate_compare
-        else:
-            compare_func = self.compare
-
-        monitor_start = datetime.datetime.now()
-        last = monitor_start.timestamp()
-        print(f"Started monitor at {monitor_start}")
-        changes = {}
-        should_continue = True
-
-        try:
-            while should_continue:
-                delta = compare_func()
-                if delta:
-                    timedelta = delta.time - monitor_start
-                    hours, rest = divmod(timedelta.total_seconds(), 3600)
-                    minutes, seconds = divmod(rest, 60)
-                    ts = f"{int(hours)}:{int(minutes):02d}:{seconds:05.2f}"
-                    if not quiet:
-                        print(ts)
-                        for change in delta.changes:
-                            print(f"  {change}")
-                    changes[ts] = delta.to_json()
-                current = delta.time.timestamp()
-                since_last = current - last
-                if since_last >= interval:
-                    continue
-                next_in = interval - since_last
-                last = current
-                time.sleep(next_in)
-        except KeyboardInterrupt:
-            print("Caught Ctrl-C, stopping monitor")
-
-        return changes
-
-    def monitor_gen(self, aggregate_runs: bool = False) -> Generator[CompareResult, None, None]:
-        """Generator version of .monitor().
+    def monitor(self, aggregate_runs: bool = False) -> Generator[CompareResult, None, None]:
+        """Continuously monitor changes by driving this generator.
 
         Yields CompareResults
         """
@@ -271,33 +215,6 @@ class Comparator:
 
         while True:
             yield compare_func()
-
-    def monitor_and_record(
-        self,
-        obs: obsws_python.ReqClient,
-        interval: float = 1.0,
-        *,
-        quiet: bool = False,
-        aggregate_runs: bool = True,
-    ):
-        """Monitor changes in and record with OBS.
-
-        A JSON file will be stored next to the recorded video. The JSON file
-        will contain details of the changes, keyed to timestamps that should
-        approximately be synchronised with the video.
-
-        The obs parameter must be a connected obsws client object, and OBS must
-        be installed, running and configured to record Cemu.
-        """
-        obs.start_record()
-        changes = self.monitor(interval, quiet=quiet, aggregate_runs=aggregate_runs)
-        response = obs.stop_record()
-
-        vid_file = Path(response.output_path)
-        json_file = vid_file.with_suffix(".json")
-        with json_file.open("w") as f:
-            json.dump(changes, f, indent=2)
-        print(f"Changes and video saved to {vid_file.parent}")
 
     def _read(self) -> bytes:
         return self.reader.read_memory(0, self.data_size)

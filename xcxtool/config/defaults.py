@@ -64,6 +64,7 @@ CONFIG_DEFAULTS = {
         "obs_port": 4455,
         "obs_host": "localhost",
         "obs_password": "",
+        "recording_dir": "."
     },
     "named_ranges": {
         "gamedata": [0x10, 0x5e710],
