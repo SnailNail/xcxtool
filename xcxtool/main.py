@@ -1,4 +1,5 @@
 """Main entry point for xcxtool"""
+
 import logging
 
 from platformdirs import user_config_path
@@ -7,11 +8,6 @@ from plumbum import cli, local, LocalPath
 from . import __version__, __doc__ as description
 from . import config
 from .app import XCXToolApplication, INFO, WARNING
-from .backup import BackupSave
-from .locations import LocationTool
-from .monitor import MonitorCemu, CompareSavedata
-from .probes import FrontierNavTool
-from .savefiles import DecryptSave, EncryptSave
 
 
 class XCXToolsCLI(XCXToolApplication):
@@ -90,10 +86,10 @@ class XCXToolsCLI(XCXToolApplication):
             self.warning("Could not find saved data (Cemu NAND not found)")
 
 
-XCXToolsCLI.subcommand("backup", BackupSave)
-XCXToolsCLI.subcommand("decrypt", DecryptSave)
-XCXToolsCLI.subcommand("encrypt", EncryptSave)
-XCXToolsCLI.subcommand("fnav", FrontierNavTool)
-XCXToolsCLI.subcommand("compare", CompareSavedata)
-XCXToolsCLI.subcommand("monitor", MonitorCemu)
-XCXToolsCLI.subcommand("locations", LocationTool)
+XCXToolsCLI.subcommand("backup", "xcxtool.backup.BackupSave")
+XCXToolsCLI.subcommand("decrypt", "xcxtool.savefiles.DecryptSave")
+XCXToolsCLI.subcommand("encrypt", "xcxtool.savefiles.EncryptSave")
+XCXToolsCLI.subcommand("fnav", "xcxtool.probes.FrontierNavTool")
+XCXToolsCLI.subcommand("compare", "xcxtool.monitor.CompareSavedata")
+XCXToolsCLI.subcommand("monitor", "xcxtool.monitor.MonitorCemu")
+XCXToolsCLI.subcommand("locations", "xcxtool.locations.LocationTool")
