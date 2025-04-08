@@ -28,6 +28,7 @@ used with live data extracted directly from the emulated WiiU memory, via
     * [Configuration](#configuration-2)
   * [`xcxtool monitor`](#xcxtool-monitor)
     * [configuration](#configuration-3)
+  * [`decrypt`](#decrypt)
 <!-- TOC -->
 
 ## Configuration Overview
@@ -155,7 +156,7 @@ file:
   setting to be ignored. 
 * `output_directory` (`--output-dir`, `-o`): save xenoprobes output to this
   directory (defaults to the current working directory)
-* `exclude_probes` (`--exclude-probes` `-x`): Do not include these probe
+* `exclude_probes` (`--exclude` `-x`): Do not include these probe
   types in inventory output. Should be a array of strings in the config file,
   or a comma-separate list on the command line (e.g. `-x M1,R1`)
 
@@ -249,11 +250,6 @@ Settings should be place in the `[compare]` table of xcxtool.toml.
   they can be used to carve out exceptions in larger included ranges. The
   format of the config option and command line arguments is identical to
   `include`.
-* `--append-ranges`, `-p`: The normal behaviour of command line arguments, 
-  including `--include` and `--exclude`, is to completely replace the 
-  equivalent config setting. By setting this flag, any `--include` or 
-  `--exclude` arguments will be appended to the configured ranges, rather than 
-  replacing them.
 
 ## `xcxtool monitor`
 Like `xcxtool compare`, but continuously monitor Cemu memory rather than 
@@ -286,6 +282,29 @@ Settings should be in the `[monitor]` table.
 * `obs_port` (`--obs-port`): Set the OBS websocket port. Default is 4455
 * `obs_password` (`--obs-password`): Set the password to access the OBS 
   websocket interface.
+
+
+## `decrypt`
+This command exposes the function that decrypt the save data (and also work 
+for Xenoblade Chronicles DE save files).
+
+Decrypted data will be saved in the same folder and with the same name, with 
+"_decrypted" appended.
+
+Configuration is only by command line arguments:
+
+* `--dump-key`, `-d`: Save the detected key alongside decrypted data. The key 
+  file will be the same as the encrypted file name with "_key" appended. The 
+  saved key can be used to decrypt other save data files saved at the same 
+  time as the gamedata file
+* `--key`, `-k`: Use the specified data to decrypt the target file, instead of 
+  detecting the key. This shoudl be used with the key dumps produced with 
+  `--dump-key`.
+
+There is also a `decrypt` command which can apply a saved key to a data file. 
+Note that this does not enable editing of save files as the checksum of the 
+edited file will be incorrect unless manually fixed.
+
 
 [Cemu emulator]: https://cemu.info
 
