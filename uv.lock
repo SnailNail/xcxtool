@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.10"
 
 [[package]]
@@ -388,7 +389,7 @@ dependencies = [
     { name = "obsws-python" },
     { name = "platformdirs" },
     { name = "plumbum" },
-    { name = "pymem" },
+    { name = "pymem", marker = "sys_platform == 'win32'" },
     { name = "rich" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
@@ -404,7 +405,7 @@ requires-dist = [
     { name = "obsws-python", specifier = ">=1.7.0" },
     { name = "platformdirs", specifier = ">=4.3.6" },
     { name = "plumbum", specifier = ">=1.8.1" },
-    { name = "pymem", specifier = ">=1.10.0" },
+    { name = "pymem", marker = "sys_platform == 'win32'", specifier = ">=1.10.0" },
     { name = "rich", specifier = ">=13.3.1" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
 ]
