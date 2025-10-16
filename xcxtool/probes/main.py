@@ -208,8 +208,7 @@ def get_save_data_from_file(file_path: LocalPath) -> bytes:
         raise ValueError("Savefile should be exactly 359,984 bytes")
     # noinspection PyTypeChecker
     raw_data: bytes = file_path.read(mode="rb")
-    key = savefiles.guess_key(raw_data)
-    return savefiles.apply_key(raw_data, key)
+    return savefiles.decrypt_save_data(raw_data)
 
 
 def get_save_data_from_backup_folder() -> bytes:

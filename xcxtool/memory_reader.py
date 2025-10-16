@@ -52,8 +52,7 @@ class SaveFileReader:
     def __init__(self, save_file: str | os.PathLike):
         with open(save_file, "rb") as f:
             data = f.read()
-        key = savefiles.guess_key(data)
-        self.data = savefiles.apply_key(data, key)
+        self.data = savefiles.decrypt_save_data(data)
         self.data_start = 0
 
     def read_memory(self, offset: int, length: int) -> bytes:
