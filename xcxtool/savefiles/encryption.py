@@ -83,7 +83,7 @@ def encrypt_save_data(
     return encryption_info.to_bytes(4, endian) + encrypted[4:]
 
 
-def detect_byte_order(save_data: bytes) -> str:
+def detect_byte_order(save_data: bytes) -> ByteOrder | None:
     header = save_data[0:16]
     decrypted = decrypt_save_data(header, "big")
     if decrypted[4:8] == b"\x00\x00\x00\x01":
@@ -91,7 +91,7 @@ def detect_byte_order(save_data: bytes) -> str:
     decrypted = decrypt_save_data(header, "little")
     if decrypted[4:8] == b"\x01\x00\x00\x00":
         return "little"
-    return ""
+    return None
 
 
 XOR_KEY = (

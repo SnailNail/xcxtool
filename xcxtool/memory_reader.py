@@ -28,7 +28,7 @@ class SaveDataReader(typing.Protocol):
 class PymemReaderBase(abc.ABC):
 
     def __init__(self, reader: pymem.Pymem):
-        self.pymem  = reader
+        self.pymem = reader
         self.data_start = self.search()
 
     def close(self):
@@ -46,6 +46,7 @@ class PymemReaderBase(abc.ABC):
         of a gamedata file. That is, self.read_memory(address, length) should
         return the same result as SaveFileReader.read_memory(address, length).
         """
+
 
 class PymemReader(PymemReaderBase):
     def __init__(
@@ -77,8 +78,8 @@ class PymemReaderDE(PymemReaderBase):
         reader: pymem.Pymem,
         anchor_pattern: bytes = b"Nagi.{4076}Lao",
         anchor_to_start: int = -2128,
-        next_pattern = b'rW\x03\x00',
-        anchor_to_next = 694704,
+        next_pattern=b"rW\x03\x00",
+        anchor_to_next=694704,
     ):
         self.anchor_pattern = anchor_pattern
         self.anchor_offset = anchor_to_start
@@ -87,10 +88,17 @@ class PymemReaderDE(PymemReaderBase):
         super().__init__(reader)
 
     def search(self) -> int:
-        candidate_addresses = self.pymem.pattern_scan_all(self.anchor_pattern, return_multiple=True)
+        candidate_addresses = self.pymem.pattern_scan_all(
+            self.anchor_pattern, return_multiple=True
+        )
         anchor_address = None
         for address in candidate_addresses:
-            if self.pymem.read_bytes(address + self.anchor_to_next, len(self.next_pattern)) == self.next_pattern:
+            if (
+                self.pymem.read_bytes(
+                    address + self.anchor_to_next, len(self.next_pattern)
+                )
+                == self.next_pattern
+            ):
                 anchor_address = address
                 break
         if anchor_address is None:
@@ -106,9 +114,9 @@ class SaveFileReader:
         with open(save_file, "rb") as f:
             data = f.read()
         byte_order = detect_byte_order(data)
-        if not byte_order:
+        if byte_order is None:
             raise ValueError("Could not determine save data byte order")
-        # noinspection PyTypeChecker
+
         self.data = decrypt_save_data(data, byte_order)
         self.data_start = 0
 
