@@ -19,6 +19,7 @@ STRUCT_BYTE_ORDER = {
 
 __all__ = [
     "decrypt_save_data",
+    "detect_byte_order",
     "encrypt_save_data",
     "get_initial_key_position",
     "transform",
@@ -80,6 +81,17 @@ def encrypt_save_data(
     encryption_info = (random_value & 0xFFFFFE00) | key_position
 
     return encryption_info.to_bytes(4, endian) + encrypted[4:]
+
+
+def detect_byte_order(save_data: bytes) -> str:
+    header = save_data[0:16]
+    decrypted = decrypt_save_data(header, "big")
+    if decrypted[4:8] == b"\x00\x00\x00\x01":
+        return "big"
+    decrypted = decrypt_save_data(header, "little")
+    if decrypted[4:8] == b"\x01\x00\x00\x00":
+        return "little"
+    return ""
 
 
 XOR_KEY = (
