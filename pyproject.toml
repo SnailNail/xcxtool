@@ -8,10 +8,10 @@ license = { text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "plumbum >= 1.8.1",
-    "rich >= 13.3.1",
+    "rich>=13.3.1",
     "Pymem >= 1.10.0 ; sys_platform == 'win32'",
-    "obsws-python >= 1.7.0",
-    "tomli >= 2.0.0 ; python_version < '3.11'",
+    "obsws-python>=1.7.0",
+    "tomli >= 2.3.0 ; python_version < '3.11'",
     "platformdirs>=4.3.6",
 ]
 classifiers = [
