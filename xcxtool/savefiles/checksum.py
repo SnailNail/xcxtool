@@ -15,39 +15,46 @@ STRUCT_BYTE_ORDER = {
     "little": "<",
 }
 
-__all__ = ["crc32", "verify_saved_data", "fix_checksum"]
+__all__ = ["calculate_checksum", "fix_checksum", "verify_checksum", "verify_data_size"]
 
 
-def crc32(data: bytes) -> int:
+def calculate_checksum(data: bytes) -> int:
     hash_ = len(data)
     for byte in data:
         hash_ = CRC_TABLE[(hash_ ^ byte) & 0xFF] ^ (hash_ >> 8)
     return hash_
 
 
-def verify_saved_data(data: bytes, endian: ByteOrder = "big") -> bool:
+def verify_checksum(save_data: bytes, endian: ByteOrder = "big") -> bool:
     """Verify if the game data checksum is correct.
 
     Raises ValueError if the save data does not appear to be decrypted.
     """
-    header = struct.unpack(f"{STRUCT_BYTE_ORDER[endian]}4I", data[0:16])
+    header = struct.unpack(f"{STRUCT_BYTE_ORDER[endian]}4I", save_data[0:16])
     if header[1] != 1:
         raise ValueError("Save data must be decrypted before verifying checksum")
 
-    if crc32(data[16:]) == header[2]:
-        return True
-    return False
+    return calculate_checksum(save_data[16:]) == header[2]
 
 
-def fix_checksum(data: bytes, endian: ByteOrder = "big") -> bytes:
+def fix_checksum(save_data: bytes, endian: ByteOrder = "big") -> bytes:
     """Write new checksum to data header.
 
     Raises ValueError if save date appears to be encrypted.
     """
-    if verify_saved_data(data, endian):
-        return data
-    new_checksum = crc32(data[16:]).to_bytes(4, endian, signed=False)
-    return data[0:4] + new_checksum + data[8:]
+    if verify_checksum(save_data, endian):
+        return save_data
+    new_checksum = calculate_checksum(save_data[16:]).to_bytes(4, endian, signed=False)
+    return save_data[0:4] + new_checksum + save_data[8:]
+
+
+def verify_data_size(save_data: bytes, endian: ByteOrder = "big") -> bool:
+    """Verify that the data size declared in the save data header is correct."""
+    header = struct.unpack(f"{STRUCT_BYTE_ORDER[endian]}4I", save_data[0:16])
+    if header[1] != 1:
+        raise ValueError("Save data must be decrypted before verifying data size")
+
+    return len(save_data[16:]) == header[3]
 
 
 CRC_TABLE = [
