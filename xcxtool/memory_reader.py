@@ -11,8 +11,8 @@ import typing
 
 import pymem
 
-from xcxtool import savefiles
 from xcxtool.app import LOGGER_NAME, SUCCESS
+from xcxtool.savefiles.encryption import decrypt_save_data
 
 _log = logging.getLogger(LOGGER_NAME)
 
@@ -52,7 +52,7 @@ class SaveFileReader:
     def __init__(self, save_file: str | os.PathLike):
         with open(save_file, "rb") as f:
             data = f.read()
-        self.data = savefiles.decrypt_save_data(data)
+        self.data = decrypt_save_data(data)
         self.data_start = 0
 
     def read_memory(self, offset: int, length: int) -> bytes:

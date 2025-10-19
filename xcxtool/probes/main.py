@@ -5,9 +5,10 @@ from collections import Counter
 
 from plumbum import cli, local, LocalPath
 
-from xcxtool import config, savefiles
+from xcxtool import config
 from xcxtool.app import XCXToolApplication
 from xcxtool.probes import data
+from xcxtool.savefiles.encryption import decrypt_save_data
 
 
 class FrontierNavTool(XCXToolApplication):
@@ -208,7 +209,7 @@ def get_save_data_from_file(file_path: LocalPath) -> bytes:
         raise ValueError("Savefile should be exactly 359,984 bytes")
     # noinspection PyTypeChecker
     raw_data: bytes = file_path.read(mode="rb")
-    return savefiles.decrypt_save_data(raw_data)
+    return decrypt_save_data(raw_data)
 
 
 def get_save_data_from_backup_folder() -> bytes:

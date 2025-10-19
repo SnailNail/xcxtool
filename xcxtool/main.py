@@ -87,8 +87,8 @@ class XCXToolsCLI(XCXToolApplication):
 
 
 XCXToolsCLI.subcommand("backup", "xcxtool.backup.BackupSave")
-XCXToolsCLI.subcommand("decrypt", "xcxtool.savefiles.DecryptSave")
-XCXToolsCLI.subcommand("encrypt", "xcxtool.savefiles.EncryptSave")
+XCXToolsCLI.subcommand("decrypt", "xcxtool.savefiles.main.DecryptSave")
+XCXToolsCLI.subcommand("encrypt", "xcxtool.savefiles.main.EncryptSave")
 XCXToolsCLI.subcommand("fnav", "xcxtool.probes.FrontierNavTool")
 XCXToolsCLI.subcommand("compare", "xcxtool.monitor.CompareSavedata")
 XCXToolsCLI.subcommand("monitor", "xcxtool.monitor.MonitorCemu")
