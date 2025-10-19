@@ -13,6 +13,7 @@ dependencies = [
     "obsws-python>=1.7.0",
     "tomli >= 2.3.0 ; python_version < '3.11'",
     "platformdirs>=4.3.6",
+    "pythrottle>=0.1.1",
 ]
 classifiers = [
     "Private :: Do Not Upload",

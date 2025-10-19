@@ -79,8 +79,8 @@ class CompareSavedata(XCXToolApplication):
             return 2
 
         self.get_include_and_exclude()
-        self.info("Include:", self.include)
-        self.info("Exclude:", self.exclude)
+        self.info(f"Include: {self.include}")
+        self.info(f"Exclude: {self.exclude}")
 
         self.get_save_dir()
 
@@ -91,7 +91,12 @@ class CompareSavedata(XCXToolApplication):
         named_ranges = monitor.NamedRanges()
         named_ranges.add_from_config(config.get_section("named_ranges"))
         comparator = monitor.Comparator(
-            after_reader, self.include, self.exclude, before_data, named_ranges
+            after_reader,
+            self.include,
+            self.exclude,
+            before_data,
+            named_ranges,
+            data_size=len(before_data),
         )
         if self.merge_changes:
             changes = comparator.aggregate_compare()
@@ -146,64 +151,107 @@ def ranges_from_config(config_key):
     return [range(*pair) for pair in config.get(config_key)]
 
 
-class MonitorCemu(XCXToolApplication):
-    """Monitor Cemu process memory for changes"""
+class MonitorEmu(XCXToolApplication):
+    """Monitor emulator process memory for changes"""
 
     CALL_MAIN_IF_NESTED_COMMAND = False
 
     comp: monitor.Comparator
     recording: LocalPath = None
 
+    definitive_edition: bool = cli.Flag(
+        names=["-d", "--de"],
+        group="Monitoring options",
+        help="Set this if connecting to a Switch emulator running the Definitive Edition of the game",
+    )
+    data_size: int = cli.SwitchAttr(
+        names=["--data-size"],
+        argtype=int,
+        group="Monitoring options",
+        help="Size of memory to monitor. Defaults to gamedata size",
+    )
     include: list[range] = cli.SwitchAttr(
-        ["-i", "--include"],
-        _split_include_exclude,
+        names=["-i", "--include"],
+        argtype=_split_include_exclude,
         list=True,
+        group="Monitoring options",
         help="Data file ranges to include in the comparison. Defaults to the whole file",
     )
     exclude: list[range] = cli.SwitchAttr(
-        ["-x", "--exclude"],
-        _split_include_exclude,
+        names=["-x", "--exclude"],
+        argtype=_split_include_exclude,
         list=True,
+        group="Monitoring options",
         help="Exclude ranges from the comparison",
     )
-    record: bool = cli.Flag(
-        ["r", "record"], False, help="Record gameplay while monitoring"
+    monitoring_interval: float = cli.SwitchAttr(
+        names=["--interval"],
+        argtype=float,
+        default=0.5,
+        group="Monitoring options",
+        help="Interval (in seconds) between comparisons",
     )
     merge_changes: bool = cli.Flag(
-        ["-m", "--merge-results"], help="Merge changes in consecutive memory offsets"
+        names=["-m", "--merge-results"],
+        group="Output options",
+        help="Merge changes in consecutive memory offsets",
     )
     write_json: LocalPath = cli.SwitchAttr(
-        ["j", "write"],
-        local.path,
+        names=["-j", "--write"],
+        argtype=local.path,
+        group="Output options",
         help="Write results of the monitoring session to this file as JSON. Note that the "
-             "--record function automatically writes a JSON log next to the recording",
+        "--record function automatically writes a JSON log next to the recording",
+    )
+    record: bool = cli.Flag(
+        names=["-r", "--record"],
+        default=False,
+        group="OBS options",
+        help="Record gameplay while monitoring",
     )
     obs_host: str = cli.SwitchAttr(
-        ["obs-host"],
-        str,
-        "localhost",
+        names=["--obs-host"],
+        argtype=str,
+        default="localhost",
         group="OBS options",
         help="hostname/IP of OBS websocket",
     )
     obs_port: int = cli.SwitchAttr(
-        ["obs-port"], int, 4455, group="OBS options", help="OBS Websocket port"
+        names=["obs-port"],
+        argtype=int,
+        default=4455,
+        group="OBS options",
+        help="OBS Websocket port",
     )
     obs_password: str = cli.SwitchAttr(
-        ["obs-password"], str, group="OBS options", help="OBS websocket password"
+        names=["obs-password"],
+        argtype=str,
+        group="OBS options",
+        help="OBS websocket password",
     )
 
-    def main(self):
-        reader = memory_reader.connect_cemu()
+    @cli.positional(str)
+    def main(self, process_name: str):
+        if self.definitive_edition:
+            self.success(f"Connecting to {process_name}, this may take some time")
+        reader = memory_reader.connect_emulator(process_name, self.definitive_edition)
         if reader is None:
             exit(1)
         self.get_include_and_exclude()
         named_ranges = monitor.NamedRanges()
         named_ranges.add_from_config(config.get_section("named_ranges"))
+        if self.data_size:
+            data_size = self.data_size
+        elif self.definitive_edition:
+            data_size = 696_832
+        else:
+            data_size = 359_984
         self.comp = monitor.Comparator(
             reader,
             include=self.include,
             exclude=self.exclude,
             named_ranges=named_ranges,
+            data_size=data_size,
         )
         try:
             with self.do_recording():
@@ -227,6 +275,7 @@ class MonitorCemu(XCXToolApplication):
             self.write_output_to_json(changes, json_file)
         elif self.write_json:
             self.write_output_to_json(changes)
+        return 0
 
     def do_monitor(
         self, quiet: bool, aggregate_runs: bool
@@ -234,14 +283,14 @@ class MonitorCemu(XCXToolApplication):
 
         changes = {}
         monitor_start = datetime.datetime.now()
-        monitor_gen = self.comp.monitor(aggregate_runs)
+        monitor_gen = self.comp.monitor(aggregate_runs, self.monitoring_interval)
         self.success(f"Started monitor at {monitor_start}")
         try:
             for changeset in monitor_gen:
                 if not changeset:
                     continue
                 ts = _timedelta_to_hms(changeset.time - monitor_start)
-                changes[ts] = changeset
+                changes[ts] = changeset.to_json()
                 if quiet:
                     continue
                 self.out(f"[bold]{ts}")
@@ -284,7 +333,9 @@ class MonitorCemu(XCXToolApplication):
         self.recording = local.path(recording.output_path)
         self.success(f"Recording saved to {self.recording}")
 
-    def write_output_to_json(self, changes: dict[str, monitor.CompareResult], path: LocalPath = None):
+    def write_output_to_json(
+        self, changes: dict[str, monitor.CompareResult], path: LocalPath = None
+    ):
         if path is None:
             path = self.write_json
         with open(path, "w") as f:
@@ -301,7 +352,9 @@ class MonitorCemu(XCXToolApplication):
         return obs
 
     @staticmethod
-    def _set_obs_output_dir(client: ReqClient, record_dir: LocalPath, timeout: float = 2.5):
+    def _set_obs_output_dir(
+        client: ReqClient, record_dir: LocalPath, timeout: float = 2.5
+    ):
         start = time.monotonic()
         while True:
             try:
@@ -324,7 +377,7 @@ def _timedelta_to_hms(delta: datetime.timedelta) -> str:
     return f"{int(hours)}:{int(minutes):02d}:{seconds:06.3f}"
 
 
-@MonitorCemu.subcommand("process-json")
+@MonitorEmu.subcommand("process-json")
 class MonitorProcessJson(XCXToolApplication):
     """Process the json data produced when recording gameplay with monitoring"""
 
@@ -493,7 +546,7 @@ class MonitorProcessJson(XCXToolApplication):
         writer.writerows(rows)
 
 
-@MonitorCemu.subcommand("grep")
+@MonitorEmu.subcommand("grep")
 class MonitorSearchJson(XCXToolApplication):
     """Search monitor JSON output for patterns.
 

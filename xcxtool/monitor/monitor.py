@@ -6,6 +6,8 @@ import json
 from os import PathLike
 from typing import Any, Sequence, Generator
 
+from pythrottle.throttle import Throttle
+
 from xcxtool.memory_reader import SaveDataReader
 from xcxtool.data import locations
 
@@ -134,7 +136,6 @@ class NamedRanges:
 
 
 class Comparator:
-    data_size = 359_984
 
     def __init__(
         self,
@@ -143,8 +144,11 @@ class Comparator:
         exclude: list[range] = None,
         initial_data: bytes = None,
         named_ranges: NamedRanges = NamedRanges(),
+        *,
+        data_size: int = 359_984,
     ):
         self.reader = reader
+        self.data_size = data_size
         self.includes = include if include else [range(0, self.data_size)]
         self.excludes = exclude if exclude else []
         self.named_ranges = named_ranges
@@ -203,7 +207,9 @@ class Comparator:
         self.previous = new_mem
         return CompareResult(now, deltas)
 
-    def monitor(self, aggregate_runs: bool = False) -> Generator[CompareResult, None, None]:
+    def monitor(
+        self, aggregate_runs: bool = False, interval: float = 0.5
+    ) -> Generator[CompareResult, None, None]:
         """Continuously monitor changes by driving this generator.
 
         Yields CompareResults
@@ -212,8 +218,8 @@ class Comparator:
             compare_func = self.aggregate_compare
         else:
             compare_func = self.compare
-
-        while True:
+        throttler = Throttle(interval=interval)
+        for _ in throttler.loop():
             yield compare_func()
 
     def _read(self) -> bytes:

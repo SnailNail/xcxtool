@@ -292,6 +292,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pythrottle"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/c7/31e408b6ed0d84dfb8c91cc93f9cca52b2589e5380d45197a57d04cdb25e/pythrottle-0.1.1.tar.gz", hash = "sha256:29e073aa0581141b986977bf9d6c859523293f3a6a06691568dc285205120594", size = 6313, upload-time = "2020-04-04T19:39:00.857Z" }
+
+[[package]]
 name = "pywin32"
 version = "311"
 source = { registry = "https://pypi.org/simple" }
@@ -434,6 +440,7 @@ dependencies = [
     { name = "platformdirs" },
     { name = "plumbum" },
     { name = "pymem", marker = "sys_platform == 'win32'" },
+    { name = "pythrottle" },
     { name = "rich" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
@@ -450,6 +457,7 @@ requires-dist = [
     { name = "platformdirs", specifier = ">=4.3.6" },
     { name = "plumbum", specifier = ">=1.8.1" },
     { name = "pymem", marker = "sys_platform == 'win32'", specifier = ">=1.10.0" },
+    { name = "pythrottle", specifier = ">=0.1.1" },
     { name = "rich", specifier = ">=13.3.1" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.3.0" },
 ]

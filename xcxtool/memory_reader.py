@@ -141,3 +141,23 @@ def connect_cemu(process_name: str = "cemu.exe") -> PymemReader | None:
     else:
         _log.log(SUCCESS, f"Found Cemu at {reader.pymem.base_address:#018x}")
         return reader
+
+
+def connect_emulator(process_name: str, definitive_edition: bool = False) -> PymemReaderBase | None:
+    """Connect to emulator running the WiiU or Switch version"""
+    try:
+        connection = pymem.Pymem(process_name)
+    except pymem.exception.ProcessNotFound:
+        _log.error(f"Could not find {process_name} process ")
+        return None
+    _log.log(SUCCESS, f"Found {process_name} at {connection.base_address:#018x}")
+    if definitive_edition:
+        reader_class = PymemReaderDE
+    else:
+        reader_class = PymemReader
+    try:
+        reader = reader_class(connection)
+    except ValueError:
+        return None
+    _log.log(SUCCESS, f"save data found at offset {reader.data_start:#018x}")
+    return reader
