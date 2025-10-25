@@ -11,6 +11,8 @@ except NameError:
 
 _data_dir_join = functools.partial(join, _this_dir, "json")
 _text_dir_join = _data_dir_join
+_bdat_toolset = False
+_id_string = "id"
 
 
 def load_fld_location(get_names: bool = True) -> list[dict]:
@@ -48,6 +50,8 @@ def load_with_text_field(
     """Generic function to load a JSON dump and replace text fields"""
     with open(_data_dir_join(f"{data_table}.json")) as f:
         data = json.load(f)
+    if _bdat_toolset:
+        data = data["rows"]
     if text_table:
         names = load_textlist(text_table)
         for item in data:
@@ -62,7 +66,9 @@ def load_textlist(textlist_file) -> dict[int, str]:
     """
     with open(_text_dir_join(f"{textlist_file}.json")) as f:
         data = json.load(f)
-    return {d["id"]: d["name"] for d in data}
+    if _bdat_toolset:
+        data = data["rows"]
+    return {d[_id_string]: d["name"] for d in data}
 
 
 def set_data_dir(data_path: str):
@@ -76,3 +82,20 @@ def set_text_dir(data_path: str):
     if exists(data_path):
         _text_dir_join = functools.partial(join, data_path)
 
+
+def set_bdat_toolset_json():
+    """Configure functions to load from bdat-toolset JSON.
+
+    JSON output from bdat-toolset is nested in a "rows" table and has a
+    different name for the ID column.
+    """
+    global _bdat_toolset, _id_string
+    _bdat_toolset = True
+    _id_string = "$id"
+
+
+def set_xbtool_json():
+    """Configure functions to load from xbtool JSON (default)"""
+    global _bdat_toolset, _id_string
+    _bdat_toolset = False
+    _id_string = "id"
