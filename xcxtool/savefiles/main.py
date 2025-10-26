@@ -12,6 +12,7 @@ from .encryption import (
     encrypt_save_data,
     detect_byte_order,
 )
+from .checksum import fix_checksum, verify_checksum, verify_data_size
 
 ByteOrder = Literal["big", "little"]
 
@@ -51,24 +52,35 @@ class DecryptSave(XCXToolApplication):
 class EncryptSave(XCXToolApplication):
     """Encrypt save data"""
 
+    fix_checksum: bool = cli.Flag(["--fix-checksum"], help="Verify checksum and write new checksum if data has changed")
+    byte_order: ByteOrder
+
     def __init__(self, executable) -> None:
         super().__init__(executable)
 
     @cli.positional(cli.ExistingFile)
     def main(self, decrypted_data: LocalPath):
-        data = decrypted_data.read(None, "rb")
+        # noinspection PyTypeChecker
+        data: bytes = decrypted_data.read(None, "rb")
 
         one_value = data[4:8]
         if one_value == b"\x01\x00\x00\x00":
-            byte_order = "little"
+            self.byte_order = "little"
         elif one_value == b"\x00\x00\x00\x01":
-            byte_order = "little"
+            self.byte_order = "big"
         else:
-            self.error("Could not determine byte order (invalid header data)")
+            self.error("Could not determine byte order (invalid or encrypted header data)")
             return 1
 
+        if self.fix_checksum:
+            try:
+                data = self.do_fix_checksum(data)
+            except ValueError:
+                self.error("Data is already encrypted or invalid header data")
+                return 1
+
         # noinspection PyTypeChecker
-        encrypted = encrypt_save_data(data, byte_order)
+        encrypted = encrypt_save_data(data, self.byte_order)
         of_name = decrypted_data.name + "_encrypted"
         of = decrypted_data.parent / of_name
 
@@ -76,6 +88,24 @@ class EncryptSave(XCXToolApplication):
         of.write(encrypted, None, mode="wb")
         copy_mtime(decrypted_data, of)
         return 0
+
+    def do_fix_checksum(self, save_data: bytes) -> bytes:
+        """Check header and write new checksum value.
+
+        Returns data unchanged if the checksum is correct or data size does
+        not match the header value.
+
+        Raises ValueError if the data is not decrypted.
+        """
+        if not verify_data_size(save_data, self.byte_order):
+            self.warning(f"Data size not correct")
+            return save_data
+        if verify_checksum(save_data, self.byte_order):
+            self.success(f"Checksum OK")
+            return save_data
+        self.success("Data has been changed, calculating new checksum")
+
+        return fix_checksum(save_data, self.byte_order)
 
 
 def copy_mtime(src: LocalPath, dest: LocalPath) -> None:
