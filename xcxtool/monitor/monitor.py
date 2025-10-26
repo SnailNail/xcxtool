@@ -259,7 +259,7 @@ def match_json_to_location(monitor_delta: dict[str, Any]) -> locations.Location 
         _locations_by_name.update((loc.name, loc) for loc in locations.locations)
 
     *_, loc_name = monitor_delta["comment"].partition(":")
-    location = _locations_by_name.get(loc_name)
+    location = _locations_by_name.get(loc_name.strip())
     if location is None:
         print(f"Could not match name: {loc_name}")
         return None
