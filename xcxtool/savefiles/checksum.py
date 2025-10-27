@@ -45,7 +45,7 @@ def fix_checksum(save_data: bytes, endian: ByteOrder = "big") -> bytes:
     if verify_checksum(save_data, endian):
         return save_data
     new_checksum = calculate_checksum(save_data[16:]).to_bytes(4, endian, signed=False)
-    return save_data[0:4] + new_checksum + save_data[8:]
+    return save_data[0:8] + new_checksum + save_data[12:]
 
 
 def verify_data_size(save_data: bytes, endian: ByteOrder = "big") -> bool:
