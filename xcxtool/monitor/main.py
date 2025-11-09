@@ -230,8 +230,9 @@ class MonitorEmu(XCXToolApplication):
         help="OBS websocket password",
     )
 
-    @cli.positional(str)
-    def main(self, process_name: str):
+    def main(self, process_name: str | None = None):
+        if process_name is None:
+            config.get("xcxtool.cemu_process_name")
         if self.definitive_edition:
             self.success(f"Connecting to {process_name}, this may take some time")
         reader = memory_reader.connect_emulator(process_name, self.definitive_edition)
