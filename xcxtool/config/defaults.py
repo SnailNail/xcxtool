@@ -1,10 +1,8 @@
 """Default configuration values/config schema"""
 CONFIG_DEFAULTS = {
     "xcxtool": {
-        "cemu_process_name": "cemu.exe",
-        "nand_root": "",
-        "persistent_id": "80000001",
-        "region": "EUR"
+        "emu_process_name": "cemu.exe",
+        "save_location": ".",
     },
     "backup": {
         "save_directory": r"",

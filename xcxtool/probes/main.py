@@ -63,6 +63,10 @@ class FrontierNavTool(XCXToolApplication):
             self.error("This application must be run as a subcommand of xcxtool")
             return 2
 
+        if self.parent.definitive_edition:
+            self.error("This application has not been updated for the Definitive Edition yet")
+            return 1
+
         savedata = self.get_save_data(target)
         if savedata is None:
             return 2
@@ -82,6 +86,7 @@ class FrontierNavTool(XCXToolApplication):
             self.do_output(self.format_xenoprobes_setup(), "layout.csv")
         if self.frontiernav:
             self.do_frontiernav()
+        return 0
 
     @cli.switch(["-x", "--exclude"], str, argname="PROBES", group="Input")
     def exclude(self, exclude_set: str):
@@ -96,12 +101,13 @@ class FrontierNavTool(XCXToolApplication):
         """
         if target is not None:
             return get_save_data_from_file(target)
-        if self.parent.cemu_save_dir is not None:
-            return get_save_data_from_file(self.parent.cemu_save_dir.join("gamedata"))
+        if self.parent.save_location is not None:
+            return get_save_data_from_file(self.parent.save_location.join("gamedata"))
         self.error(
-            "No save data found, please specify a gamedata file, or configure Cemu"
+            "No save data found, please specify a gamedata file, or configure emulator"
             "settings.",
         )
+        return None
 
     def format_xenoprobes_inventory(self) -> str:
         """Build a xenoprobes inventory as a string"""

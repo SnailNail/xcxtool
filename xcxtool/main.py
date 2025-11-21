@@ -14,36 +14,22 @@ class XCXToolsCLI(XCXToolApplication):
     PROGNAME = "xcxtool"
     DESCRIPTION = description
     VERSION = __version__
-    _REGION_PARTS = {
-        "EUR": "101c4c00",
-        "USA": "101c4d00",
-        "JPN": "10116100",
-    }
-    cemu_save_dir: LocalPath = None
+
+    save_location: LocalPath = None
 
     config_path: LocalPath = cli.SwitchAttr(
         ["--config", "-c"],
         local.path,
         help="Use this file for config instead of the default",
     )
-    cemu_process_name: str = cli.SwitchAttr(
-        ["--cemu-process-name"],
-        help="Name of the Cemu process to read data from; the default is cemu.exe",
+    save_dir: LocalPath = cli.SwitchAttr(
+        ["s", "save-dir"],
+        argtype=local.path,
+        help="Location of save data. Should be a path to a folder containing the gamedata files",
     )
-    cemu_nand_root: LocalPath = cli.SwitchAttr(
-        ["--cemu-nand-root"],
-        cli.ExistingDirectory,
-        help="Path to Cemu's emulated NAND",
-    )
-    cemu_account_id: str = cli.SwitchAttr(
-        ["--cemu-account-id"],
-        str,
-        help="The PersistentID of the WiiU account in Cemu",
-    )
-    region: str = cli.SwitchAttr(
-        ["--region"],
-        cli.Set(*_REGION_PARTS),
-        help="Region of the emulated game (determines save path)",
+
+    definitive_edition: bool = cli.Flag(
+        ["d", "de"], help="Specify Definitive Edition if not auto-detected"
     )
 
     @cli.switch(["v", "verbose"], excludes=["quiet", "debug"])
@@ -63,27 +49,24 @@ class XCXToolsCLI(XCXToolApplication):
 
     def main(self):
         config.load_config(self.config_path)
-        nand_root = config.get_preferred(self.cemu_nand_root, "xcxtool.nand_root")
-        if not nand_root:
-            nand_root = user_config_path("Cemu", False, roaming=True) / "mlc01"
-        region = config.get_preferred(self.region, "xcxtool.region")
-        region_part = self._REGION_PARTS[region.upper()]
-        persistent_id = config.get_preferred(
-            self.cemu_account_id, "xcxtool.persistent_id"
-        )
-        cemu_save_dir = local.path(
-            nand_root,
-            "usr/save/00050000",
-            region_part,
-            "user",
-            persistent_id,
-            "st/game",
-        )
-        if cemu_save_dir.exists():
-            self.info(f"Saved data found at {cemu_save_dir}")
-            self.cemu_save_dir = cemu_save_dir
+        if self.save_dir is None:
+            save_location = local.path(config.get("xcxtool.save_location"))
+            self.debug("Save location from config: %s", save_location)
         else:
-            self.warning("Could not find saved data (Cemu NAND not found)")
+            save_location = self.save_dir
+            self.debug("Save location from command line: %s", save_location)
+
+        if "st" in save_location.parts:
+            self.info("WiiU version detected")
+        elif "sts" in save_location.parts:
+            self.info("Switch version detected")
+            self.definitive_edition = True
+
+        if save_location.join("systemdata").exists():
+            self.success(f"Saved data found at {save_location}")
+            self.save_location= save_location
+        else:
+            self.warning("Could not find saved data (systemdata not found)")
 
 
 XCXToolsCLI.subcommand("backup", "xcxtool.backup.BackupSave")
@@ -92,4 +75,4 @@ XCXToolsCLI.subcommand("encrypt", "xcxtool.savefiles.main.EncryptSave")
 XCXToolsCLI.subcommand("fnav", "xcxtool.probes.FrontierNavTool")
 XCXToolsCLI.subcommand("compare", "xcxtool.monitor.CompareSavedata")
 XCXToolsCLI.subcommand("monitor", "xcxtool.monitor.MonitorEmu")
-XCXToolsCLI.subcommand("locations", "xcxtool.locations.LocationTool")
+# XCXToolsCLI.subcommand("locations", "xcxtool.locations.LocationTool")

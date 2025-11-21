@@ -40,6 +40,10 @@ class BackupSave(XCXToolApplication):
             self.error("This utility must be run via the main xcxtool application")
             return 2
 
+        if self.parent.definitive_edition:
+            self.error("This utility has not been updated for the Definitive Edition yet")
+            return 1
+
         if self.backup_name is None:
             self.backup_name = config.get("backup.file_name")
 
@@ -62,6 +66,7 @@ class BackupSave(XCXToolApplication):
         archive_name = formatter.ForgivingFormatter().format(self.backup_name, **field_values)
 
         self.do_backup(archive_name, backup_path, save_path)
+        return 0
 
     def get_backup_path(self) -> LocalPath | None:
         if self.backup_dir is not None:
@@ -70,10 +75,10 @@ class BackupSave(XCXToolApplication):
         backup_dir = local.path(config.get("backup.backup_directory"))
         if not backup_dir.exists():
             self.error(f"[red]Backup directory not found (got '{self.backup_dir}')")
-            return
+            return None
         if not backup_dir.is_dir():
             self.error(f"[red]Backup path is not a directory (got '{self.backup_dir}')")
-            return
+            return None
         return backup_dir
 
     def get_save_path(self) -> LocalPath | None:
@@ -83,8 +88,10 @@ class BackupSave(XCXToolApplication):
         if configured := config.get("backup.save_directory"):
             return local.path(configured)
 
-        if self.parent.cemu_save_dir is not None:
-            return self.parent.cemu_save_dir.parents[1]
+        if self.parent.save_location is not None:
+            return self.parent.save_location.parents[1]
+
+        return None
 
     def get_tokens(self, gamedata_reader: memory_reader.SaveDataReader) -> dict:
         field_values = {}

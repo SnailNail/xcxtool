@@ -78,6 +78,10 @@ class CompareSavedata(XCXToolApplication):
             self.error("This app must be run as a subcommand of xcxtool")
             return 2
 
+        if self.parent.definitive_edition:
+            self.error("This app has not been updated for the Definitive Edition yet")
+            return 1
+
         self.get_include_and_exclude()
         self.info(f"Include: {self.include}")
         self.info(f"Exclude: {self.exclude}")
@@ -112,13 +116,13 @@ class CompareSavedata(XCXToolApplication):
 
     def get_save_dir(self):
         if self.save_directory is not None:
-            return self
+            return
         if configured := config.get("compare.save_directory"):
             try:
                 self.save_directory = cli.ExistingDirectory(configured)
             except ValueError:
                 self.warning("Configured save_directory is not a directory")
-        self.save_directory = self.parent.cemu_save_dir
+        self.save_directory = self.parent.save_location
 
     def get_before_data(self) -> bytes | None:
         if self.before_file is None and self.save_directory is not None:
@@ -230,7 +234,8 @@ class MonitorEmu(XCXToolApplication):
         help="OBS websocket password",
     )
 
-    def main(self, process_name: str | None = None):
+    @cli.positional(str)
+    def main(self, process_name: str = None):
         if process_name is None:
             config.get("xcxtool.cemu_process_name")
         if self.definitive_edition:
