@@ -2,6 +2,7 @@
 
 import webbrowser
 from collections import Counter
+from typing import Literal
 
 from plumbum import cli, local, LocalPath
 
@@ -256,11 +257,12 @@ def get_installed_probes(probe_sites_buffer: bytes) -> dict[data.ProbeSite, data
     return sites
 
 
-def get_sightseeing_spots(locations_buffer: bytes) -> set[int]:
+def get_sightseeing_spots(locations_buffer: bytes, byteorder: Literal["little", "big"] = "big") -> set[int]:
     """Get a set of location IDs for found sightseeing spots."""
     spots = set()
+    location_bits = {i: int.from_bytes(locations_buffer[i:i+4], byteorder) for i in range(0, 68, 4)}
     for location_id, offset, bit in data.sightseeing_spots:
-        if locations_buffer[offset] & bit:
+        if location_bits[offset] & bit:
             spots.add(location_id)
 
     return spots
