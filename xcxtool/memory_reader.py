@@ -19,6 +19,7 @@ _log = logging.getLogger(LOGGER_NAME)
 
 class SaveDataReader(typing.Protocol):
 
+    byte_order: typing.Literal["big", "little"]
     data_start: int
 
     def read_memory(self, offset: int, length: int) -> bytes:
@@ -49,6 +50,9 @@ class PymemReaderBase(abc.ABC):
 
 
 class PymemReader(PymemReaderBase):
+
+    byte_order = "big"
+
     def __init__(
         self,
         reader: pymem.Pymem,
@@ -72,6 +76,8 @@ class PymemReader(PymemReaderBase):
 
 class PymemReaderDE(PymemReaderBase):
     """Class for reading Definitive Edition save data from emulator memory"""
+
+    byte_order = "little"
 
     def __init__(
         self,
@@ -117,6 +123,7 @@ class SaveFileReader:
         if byte_order is None:
             raise ValueError("Could not determine save data byte order")
 
+        self.byte_order = byte_order
         self.data = decrypt_save_data(data, byte_order)
         self.data_start = 0
 
