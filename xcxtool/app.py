@@ -20,7 +20,7 @@ DEBUG = 10
 
 LOGGER_NAME = "XCXToolApplicationLog"
 
-logging.addLevelName(35, "SUCCESS")
+logging.addLevelName(SUCCESS, "SUCCESS")
 
 _log_config = {}
 
