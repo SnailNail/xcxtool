@@ -64,7 +64,7 @@ class FrontierNavTool(XCXToolApplication):
             self.error("This application must be run as a subcommand of xcxtool")
             return 2
 
-        if self.parent.definitive_edition:
+        if self.parent.edition == "switch":
             self.error("This application has not been updated for the Definitive Edition yet")
             return 1
 

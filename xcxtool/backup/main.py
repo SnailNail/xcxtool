@@ -40,7 +40,7 @@ class BackupSave(XCXToolApplication):
             self.error("This utility must be run via the main xcxtool application")
             return 2
 
-        if self.parent.definitive_edition:
+        if self.parent.edition == "switch":
             self.error("This utility has not been updated for the Definitive Edition yet")
             return 1
 

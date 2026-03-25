@@ -1,13 +1,10 @@
 """Main entry point for xcxtool"""
 
-import logging
-
-from platformdirs import user_config_path
 from plumbum import cli, local, LocalPath
 
 from . import __version__, __doc__ as description
 from . import config
-from .app import XCXToolApplication, INFO, WARNING
+from .app import XCXToolApplication, DEBUG, INFO, WARNING
 
 
 class XCXToolsCLI(XCXToolApplication):
@@ -28,8 +25,11 @@ class XCXToolsCLI(XCXToolApplication):
         help="Location of save data. Should be a path to a folder containing the gamedata files",
     )
 
-    definitive_edition: bool = cli.Flag(
-        ["d", "de"], help="Specify Definitive Edition if not auto-detected"
+    edition: str = cli.SwitchAttr(
+        ["e", "edition"],
+        argtype=cli.Set("wiiu", "switch"),
+        default="wiiu",
+        help="Specify save data is original (WiiU) or Definitive Edition (Switch)",
     )
 
     @cli.switch(["v", "verbose"], excludes=["quiet", "debug"])
@@ -45,7 +45,7 @@ class XCXToolsCLI(XCXToolApplication):
     @cli.switch(["debug"], excludes=["verbose", "quiet"])
     def _debug(self):
         """Show debug output"""
-        self.message_level = logging.DEBUG
+        self.message_level = DEBUG
 
     def main(self):
         config.load_config(self.config_path)
@@ -60,7 +60,7 @@ class XCXToolsCLI(XCXToolApplication):
             self.info("WiiU version detected")
         elif "sts" in save_location.parts:
             self.info("Switch version detected")
-            self.definitive_edition = True
+            self.edition = "switch"
 
         if save_location.join("systemdata").exists():
             self.success(f"Saved data found at {save_location}")

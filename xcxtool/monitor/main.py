@@ -78,7 +78,7 @@ class CompareSavedata(XCXToolApplication):
             self.error("This app must be run as a subcommand of xcxtool")
             return 2
 
-        if self.parent.definitive_edition:
+        if self.parent.edition == "switch":
             self.error("This app has not been updated for the Definitive Edition yet")
             return 1
 
