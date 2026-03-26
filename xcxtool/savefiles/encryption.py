@@ -12,6 +12,11 @@ from typing import Literal
 
 ByteOrder = Literal["big", "little"]
 
+BYTE_ORDER_BYTES: dict[bytes, ByteOrder] = {
+    b"\x00\x00\x00\x01": "big",
+    b"\x01\x00\x00\x00": "little",
+}
+
 STRUCT_BYTE_ORDER = {
     "big": ">",
     "little": "<",
@@ -47,7 +52,13 @@ def transform(save_data: bytes, key: bytes, key_position: int) -> bytes:
 
 
 def decrypt_save_data(data: bytes, endian: Literal["big", "little"] = "big") -> bytes:
-    """Decrypt encrypted save data and return plain bytes"""
+    """Decrypt encrypted save data and return plain bytes,
+
+    If data is already decrypted, return it as-is.
+    """
+    # This should always work as there are no repeated null bytes in the key
+    if data[4:8] in BYTE_ORDER_BYTES:
+        return data
     key_position = get_initial_key_position(data, endian)
     key = struct.pack(f"{STRUCT_BYTE_ORDER[endian]}256H", *XOR_KEY)
     return transform(data, key, key_position)
@@ -86,12 +97,7 @@ def encrypt_save_data(
 def detect_byte_order(save_data: bytes) -> ByteOrder | None:
     header = save_data[0:16]
     decrypted = decrypt_save_data(header, "big")
-    if decrypted[4:8] == b"\x00\x00\x00\x01":
-        return "big"
-    decrypted = decrypt_save_data(header, "little")
-    if decrypted[4:8] == b"\x01\x00\x00\x00":
-        return "little"
-    return None
+    return BYTE_ORDER_BYTES.get(decrypted[4:8])
 
 
 XOR_KEY = (
