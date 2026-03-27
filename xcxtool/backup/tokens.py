@@ -5,7 +5,7 @@ import struct
 
 from plumbum import LocalPath
 
-from ..memory_reader import SaveDataReader
+from xcxtool.readers.save_files import SaveDataReader
 from .. import game_timer
 
 

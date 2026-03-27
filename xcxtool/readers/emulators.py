@@ -5,25 +5,11 @@ to use TCP Gecko to read the game running on a real WiiU in the future.
 """
 
 import abc
-import logging
-import os
-import typing
 
 import pymem
 
-from xcxtool.app import LOGGER_NAME, SUCCESS
-from xcxtool.savefiles.encryption import decrypt_save_data, detect_byte_order
-
-_log = logging.getLogger(LOGGER_NAME)
-
-
-class SaveDataReader(typing.Protocol):
-
-    byte_order: typing.Literal["big", "little"]
-    data_start: int
-
-    def read_memory(self, offset: int, length: int) -> bytes:
-        """Read `length` bytes from `offset`, relative to `self.data_start`"""
+from xcxtool.app import SUCCESS
+from xcxtool.readers.save_files import _log
 
 
 class PymemReaderBase(abc.ABC):
@@ -111,26 +97,6 @@ class PymemReaderDE(PymemReaderBase):
             _log.error("Save data not found")
             raise ValueError("Save data not found")
         return anchor_address + self.anchor_offset
-
-
-class SaveFileReader:
-    """Read data from a XCX save file (gamedata)"""
-
-    def __init__(self, save_file: str | os.PathLike):
-        with open(save_file, "rb") as f:
-            data = f.read()
-        byte_order = detect_byte_order(data)
-        if byte_order is None:
-            raise ValueError("Could not determine save data byte order")
-
-        self.byte_order = byte_order
-        self.data = decrypt_save_data(data, byte_order)
-        self.data_start = 0
-
-    def read_memory(self, offset: int, length: int) -> bytes:
-        start = offset + self.data_start
-        end = start + length
-        return self.data[start:end]
 
 
 def connect_cemu(process_name: str = "cemu.exe") -> PymemReader | None:

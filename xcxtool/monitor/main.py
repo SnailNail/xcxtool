@@ -16,7 +16,9 @@ from obsws_python import ReqClient
 from obsws_python.error import OBSSDKError, OBSSDKRequestError
 from plumbum import cli, LocalPath, local
 
-from xcxtool import config, memory_reader
+import xcxtool.readers.emulators
+from xcxtool import config
+from xcxtool.readers import save_files
 from xcxtool.app import XCXToolApplication, LOGGER_NAME
 from xcxtool.monitor import monitor
 
@@ -240,7 +242,7 @@ class MonitorEmu(XCXToolApplication):
             config.get("xcxtool.cemu_process_name")
         if self.definitive_edition:
             self.success(f"Connecting to {process_name}, this may take some time")
-        reader = memory_reader.connect_emulator(process_name, self.definitive_edition)
+        reader = xcxtool.readers.emulators.connect_emulator(process_name, self.definitive_edition)
         if reader is None:
             exit(1)
         self.get_include_and_exclude()

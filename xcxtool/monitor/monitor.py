@@ -8,7 +8,7 @@ from typing import Any, Sequence, Generator
 
 from pythrottle.throttle import Throttle
 
-from xcxtool.memory_reader import SaveDataReader
+from xcxtool.readers.save_files import SaveDataReader
 from xcxtool.data import locations
 
 

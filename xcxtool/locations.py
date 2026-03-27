@@ -7,7 +7,7 @@ from plumbum import cli, LocalPath
 
 from xcxtool.app import XCXToolApplication
 from xcxtool.data import locations
-from xcxtool.memory_reader import SaveFileReader
+from xcxtool.readers.save_files import SaveFileReader
 
 FOUND_LOCATIONS_START = 0x032658
 FOUND_LOCATIONS_END = 0x03269D

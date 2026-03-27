@@ -4,7 +4,8 @@ import sys
 
 from plumbum import cli, local, LocalPath
 
-from .. import config, memory_reader
+from .. import config
+from ..readers import save_files
 from . import tokens, formatter
 from ..app import XCXToolApplication
 
