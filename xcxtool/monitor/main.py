@@ -16,11 +16,11 @@ from obsws_python import ReqClient
 from obsws_python.error import OBSSDKError, OBSSDKRequestError
 from plumbum import cli, LocalPath, local
 
-import xcxtool.readers.emulators
 from xcxtool import config
-from xcxtool.readers import save_files
 from xcxtool.app import XCXToolApplication, LOGGER_NAME
 from xcxtool.monitor import monitor
+from xcxtool.readers.emulators import connect_emulator
+from xcxtool.readers.save_files import SaveDataReader, SaveFileReader
 
 _log = logging.getLogger(LOGGER_NAME)
 
@@ -109,6 +109,7 @@ class CompareSavedata(XCXToolApplication):
         else:
             changes = comparator.compare()
         self.out(changes.format(), highlight=True)
+        return 0
 
     def get_include_and_exclude(self):
         if not self.include:
@@ -131,26 +132,26 @@ class CompareSavedata(XCXToolApplication):
             self.before_file = self.save_directory.join("gamedata_")
         self.success(f"Before: {self.before_file}")
         try:
-            before = memory_reader.SaveFileReader(self.before_file)
+            before = SaveFileReader(self.before_file)
         except TypeError:  # The encryption key can't be inferred from the data:
             self.error("Before save data could not be read")
         except FileNotFoundError:
             self.error(f"Could not find savedata: {self.before_file}")
         else:
             return before.data
-        return
+        return None
 
-    def get_after(self) -> memory_reader.SaveDataReader | None:
+    def get_after(self) -> SaveDataReader | None:
         if self.after_file is None and self.save_directory is not None:
             self.after_file = self.save_directory.join("gamedata")
         self.success(f"After: {self.after_file}")
         try:
-            return memory_reader.SaveFileReader(self.after_file)
+            return SaveFileReader(self.after_file)
         except TypeError:
             self.error(f"Could not decrypt save data {self.after_file}")
         except FileNotFoundError:
             self.error(f"Could not find savedata {self.after_file}")
-        return
+        return None
 
 
 def ranges_from_config(config_key):
@@ -242,7 +243,7 @@ class MonitorEmu(XCXToolApplication):
             config.get("xcxtool.cemu_process_name")
         if self.definitive_edition:
             self.success(f"Connecting to {process_name}, this may take some time")
-        reader = xcxtool.readers.emulators.connect_emulator(process_name, self.definitive_edition)
+        reader = connect_emulator(process_name, self.definitive_edition)
         if reader is None:
             exit(1)
         self.get_include_and_exclude()

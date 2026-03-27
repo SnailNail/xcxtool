@@ -62,7 +62,7 @@ class BackupSave(XCXToolApplication):
             self.error(f"[red]No save data found in {save_path}")
             return 2
 
-        reader = memory_reader.SaveFileReader(self.gamedata)
+        reader = save_files.SaveFileReader(self.gamedata)
         field_values = self.get_tokens(reader)
         archive_name = formatter.ForgivingFormatter().format(self.backup_name, **field_values)
 
@@ -94,7 +94,7 @@ class BackupSave(XCXToolApplication):
 
         return None
 
-    def get_tokens(self, gamedata_reader: memory_reader.SaveDataReader) -> dict:
+    def get_tokens(self, gamedata_reader: save_files.SaveDataReader) -> dict:
         field_values = {}
         field_values.update(tokens.get_datetime())
         field_values.update(tokens.get_mtime(self.gamedata))
