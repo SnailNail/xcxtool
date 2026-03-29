@@ -25,6 +25,18 @@ PROBE_INVENTORY_SLICE = slice(0x02F0EC, 0x02F59C)
 PROBE_INVENTORY_SIZE = 12 * 100
 LOCATIONS_SLICE = slice(0x032658, 0x3269c)
 
+OFFSET_SLICES_WIIU = {
+    "fnav_layout": slice(0x0480C4, 0x4820C),
+    "probe_inventory": slice(0x02F0EC, 0x2f59C),
+    "locations": slice(0x032658, 0x3269c),
+}
+
+OFFSET_SLICES_SWITCH = {
+    "fnav_layout": slice(0x09A164, 0x9A2AE),
+    "probe_inventory": slice(0x06FA10, 0x6FEC0),
+    "locations": slice(0x0730F8, 0xA5750),
+}
+
 _int = partial(int.from_bytes, byteorder="big")
 
 
@@ -86,6 +98,14 @@ def probe_and_quantity_from_bytes(buffer: bytes) -> tuple[Probe, int]:
     probe_type = _int(buffer[:2]) >> 3
     quantity = (_int(buffer[2:4]) >> 3) & 0x1FF
     return _probe_types[probe_type], quantity
+
+
+def probe_and_quantity_from_bytes_switch(buffer: bytes) -> tuple[Probe, int]:
+    int_ = partial(int.from_bytes, byteorder="little")
+    raw = int_(buffer[0:4])
+    probe_type = raw & 0xfff
+    quantity = (raw >> 19) & 0xfff
+    return Probe.from_id(probe_type), quantity
 
 
 _probe_types = {

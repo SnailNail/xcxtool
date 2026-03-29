@@ -1,5 +1,6 @@
 """Subcommand for getting probe data from a save file"""
 
+import logging
 import webbrowser
 from collections import Counter
 from typing import Literal
@@ -7,9 +8,11 @@ from typing import Literal
 from plumbum import cli, local, LocalPath
 
 from xcxtool import config
-from xcxtool.app import XCXToolApplication
+from xcxtool.app import XCXToolApplication, LOGGER_NAME
 from xcxtool.probes import data
-from xcxtool.savefiles.encryption import decrypt_save_data
+from xcxtool.savefiles.encryption import decrypt_save_data, detect_byte_order
+
+_log = logging.getLogger(LOGGER_NAME)
 
 
 class FrontierNavTool(XCXToolApplication):
@@ -65,15 +68,21 @@ class FrontierNavTool(XCXToolApplication):
             return 2
 
         if self.parent.edition == "switch":
-            self.error("This application has not been updated for the Definitive Edition yet")
-            return 1
+            slices = data.OFFSET_SLICES_SWITCH
+            self.debug(f"{slices=}")
+            byteorder = "little"
+            self.debug(f"{byteorder=}")
+        else:
+            slices = data.OFFSET_SLICES_WIIU
+            byteorder = "big"
 
         savedata = self.get_save_data(target)
         if savedata is None:
             return 2
-        self.inventory = get_probe_inventory(savedata[data.PROBE_INVENTORY_SLICE])
-        self.sites = get_installed_probes(savedata[data.FNAV_SLICE])
-        self.spots = get_sightseeing_spots(savedata[data.LOCATIONS_SLICE])
+        self.inventory = get_probe_inventory(savedata[slices["probe_inventory"]], self.parent.edition)
+        self.sites = get_installed_probes(savedata[slices["fnav_layout"]])
+        # noinspection PyTypeChecker
+        self.spots = get_sightseeing_spots(savedata[slices["locations"]], byteorder)
 
         if not any((self.include_inventory, self.include_sites, self.include_layout, self.frontiernav)):
             self.include_inventory = True
@@ -100,9 +109,13 @@ class FrontierNavTool(XCXToolApplication):
         If a save file is specified on the command line, get that. Otherwise,
         look for a save file in the configured MLC path.
         """
+        self.debug("FrontierNavTool.get_save_data()")
+        self.debug(f"{target=}")
         if target is not None:
+            self.debug("Getting savedata from target")
             return get_save_data_from_file(target)
         if self.parent.save_location is not None:
+            self.debug(f"Getting save data from {self.parent.save_location}")
             return get_save_data_from_file(self.parent.save_location.join("gamedata"))
         self.error(
             "No save data found, please specify a gamedata file, or configure emulator"
@@ -212,11 +225,13 @@ class FrontierNavTool(XCXToolApplication):
 
 def get_save_data_from_file(file_path: LocalPath) -> bytes:
     """Helper function to get save data"""
-    if file_path.stat().st_size != 359984:
-        raise ValueError("Savefile should be exactly 359,984 bytes")
+
     # noinspection PyTypeChecker
     raw_data: bytes = file_path.read(mode="rb")
-    return decrypt_save_data(raw_data)
+    byte_order = detect_byte_order(raw_data)
+    if byte_order is None:
+        raise ValueError("Could not detect byte order of save file")
+    return decrypt_save_data(raw_data, byte_order)
 
 
 def get_save_data_from_backup_folder() -> bytes:
@@ -226,18 +241,22 @@ def get_save_data_from_backup_folder() -> bytes:
     return get_save_data_from_file(save_file)
 
 
-def get_probe_inventory(probe_inventory_buffer: bytes) -> Counter[data.Probe]:
+def get_probe_inventory(probe_inventory_buffer: bytes, edition: str) -> Counter[data.Probe]:
     """Returns a Counter object representing the probe inventory."""
     if len(probe_inventory_buffer) != 1200:
         raise ValueError(
             f"buffer must be exactly 1200 bytes, got {len(probe_inventory_buffer):,} bytes"
         )
+    if edition == "switch":
+        func = data.probe_and_quantity_from_bytes_switch
+    else:
+        func = data.probe_and_quantity_from_bytes
     probes_inventory = Counter()
     for offset in range(0, 1200, 12):
         chunk = probe_inventory_buffer[offset : offset + 12]
         if chunk[2] != 0x80:
             continue
-        probe, quantity = data.probe_and_quantity_from_bytes(chunk)
+        probe, quantity = func(chunk)
         probes_inventory[probe] += quantity
 
     sorted_inventory = Counter({k: n for k, n in sorted(probes_inventory.items())})
@@ -246,13 +265,16 @@ def get_probe_inventory(probe_inventory_buffer: bytes) -> Counter[data.Probe]:
 
 def get_installed_probes(probe_sites_buffer: bytes) -> dict[data.ProbeSite, data.Probe]:
     """Get probes installed at all FrontierNav sites"""
+    _log.info("Getting installed probes")
     if len(probe_sites_buffer) < 330:
         raise ValueError(
             f"buffer must be at least 330 bytes, got {len(probe_sites_buffer):,} bytes"
         )
+    _log.debug(f"{probe_sites_buffer=}")
     installed = data.FNAV_STRUCT.unpack_from(probe_sites_buffer)
     sites = {}
     for index, installed_type in enumerate(installed):
+        _log.debug(f"{index=}, {installed_type=}")
         sites[data.ProbeSite.from_id(index)] = data.Probe.from_id(installed_type)
     return sites
 
