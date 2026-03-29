@@ -12,11 +12,6 @@ from typing import Literal
 
 ByteOrder = Literal["big", "little"]
 
-BYTE_ORDER_BYTES: dict[bytes, ByteOrder] = {
-    b"\x00\x00\x00\x01": "big",
-    b"\x01\x00\x00\x00": "little",
-}
-
 STRUCT_BYTE_ORDER = {
     "big": ">",
     "little": "<",
@@ -31,9 +26,7 @@ __all__ = [
 ]
 
 
-def get_initial_key_position(
-    save_data: bytes, endian: Literal["big", "little"] = "big"
-) -> int:
+def get_initial_key_position(save_data: bytes, endian: ByteOrder = "big") -> int:
     return int.from_bytes(save_data[0:4], endian) & 0x1FF
 
 
@@ -51,13 +44,13 @@ def transform(save_data: bytes, key: bytes, key_position: int) -> bytes:
     return save_data[0:4] + bytes(decrypted)
 
 
-def decrypt_save_data(data: bytes, endian: Literal["big", "little"] = "big") -> bytes:
+def decrypt_save_data(data: bytes, endian: ByteOrder = "big") -> bytes:
     """Decrypt encrypted save data and return plain bytes,
 
     If data is already decrypted, return it as-is.
     """
     # This should always work as there are no repeated null bytes in the key
-    if data[4:8] in BYTE_ORDER_BYTES:
+    if data[4:8] in {b"\x00\x00\x00\x01", b"\x01\x00\x00\x00"}:
         return data
     key_position = get_initial_key_position(data, endian)
     key = struct.pack(f"{STRUCT_BYTE_ORDER[endian]}256H", *XOR_KEY)
@@ -66,7 +59,7 @@ def decrypt_save_data(data: bytes, endian: Literal["big", "little"] = "big") -> 
 
 def encrypt_save_data(
     data: bytes,
-    endian: Literal["big", "little"] = "big",
+    endian: ByteOrder = "big",
     key_position: int | None = None,
 ) -> bytes:
     """Encrypt save data.
@@ -97,7 +90,12 @@ def encrypt_save_data(
 def detect_byte_order(save_data: bytes) -> ByteOrder | None:
     header = save_data[0:16]
     decrypted = decrypt_save_data(header, "big")
-    return BYTE_ORDER_BYTES.get(decrypted[4:8])
+    if decrypted[4:8] == b"\x00\x00\x00\x01":
+        return "big"
+    decrypted = decrypt_save_data(header, "little")
+    if decrypted[4:8] == b"\x01\x00\x00\x00":
+        return "little"
+    return None
 
 
 XOR_KEY = (
