@@ -63,14 +63,11 @@ class EncryptSave(XCXToolApplication):
         # noinspection PyTypeChecker
         data: bytes = decrypted_data.read(None, "rb")
 
-        one_value = data[4:8]
-        if one_value == b"\x01\x00\x00\x00":
-            self.byte_order = "little"
-        elif one_value == b"\x00\x00\x00\x01":
-            self.byte_order = "big"
-        else:
-            self.error("Could not determine byte order (invalid or encrypted header data)")
+        byte_order = detect_byte_order(data)
+        if byte_order is None:
+            self.error("Could not determine byte order (invalid header data)")
             return 1
+        self.byte_order = byte_order
 
         if self.fix_checksum:
             try:
