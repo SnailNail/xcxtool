@@ -19,14 +19,10 @@ from functools import partial
 import struct
 from typing import NamedTuple
 
-FNAV_SLICE = slice(0x0480C4, 0x04820E)
 FNAV_STRUCT = struct.Struct("Bxx" * 110)
-PROBE_INVENTORY_SLICE = slice(0x02F0EC, 0x02F59C)
-PROBE_INVENTORY_SIZE = 12 * 100
-LOCATIONS_SLICE = slice(0x032658, 0x3269C)
 
 OFFSET_SLICES_WIIU = {
-    "fnav_layout": slice(0x0480C4, 0x4820C),
+    "fnav_layout": slice(0x0480C4, 0x4820E),
     "probe_inventory": slice(0x02F0EC, 0x2F59C),
     "locations": slice(0x032658, 0x3269C),
 }

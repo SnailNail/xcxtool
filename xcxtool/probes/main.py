@@ -266,12 +266,14 @@ def get_probe_inventory(
         )
     if edition == "switch":
         func = data.probe_and_quantity_from_bytes_switch
+        check_index = 1
     else:
         func = data.probe_and_quantity_from_bytes
+        check_index = 2
     probes_inventory = Counter()
     for offset in range(0, 1200, 12):
         chunk = probe_inventory_buffer[offset : offset + 12]
-        if chunk[2] != 0x80:
+        if not chunk[check_index] >> 4 == 8:
             continue
         probe, quantity = func(chunk)
         probes_inventory[probe] += quantity
