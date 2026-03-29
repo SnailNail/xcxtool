@@ -23,12 +23,12 @@ FNAV_SLICE = slice(0x0480C4, 0x04820E)
 FNAV_STRUCT = struct.Struct("Bxx" * 110)
 PROBE_INVENTORY_SLICE = slice(0x02F0EC, 0x02F59C)
 PROBE_INVENTORY_SIZE = 12 * 100
-LOCATIONS_SLICE = slice(0x032658, 0x3269c)
+LOCATIONS_SLICE = slice(0x032658, 0x3269C)
 
 OFFSET_SLICES_WIIU = {
     "fnav_layout": slice(0x0480C4, 0x4820C),
-    "probe_inventory": slice(0x02F0EC, 0x2f59C),
-    "locations": slice(0x032658, 0x3269c),
+    "probe_inventory": slice(0x02F0EC, 0x2F59C),
+    "locations": slice(0x032658, 0x3269C),
 }
 
 OFFSET_SLICES_SWITCH = {
@@ -90,8 +90,12 @@ class ProbeSite(NamedTuple):
             ores = ""
             if self.ores:
                 ores = "," + ",".join(self.ores)
-            return "{},{},{},{},{}{}".format(*self[2:6], len(self.sightseeing_spots), ores)
-        raise ValueError(f"Unknown format code '{format_spec}' for object of type 'ProbeSite'")
+            return "{},{},{},{},{}{}".format(
+                *self[2:6], len(self.sightseeing_spots), ores
+            )
+        raise ValueError(
+            f"Unknown format code '{format_spec}' for object of type 'ProbeSite'"
+        )
 
 
 def probe_and_quantity_from_bytes(buffer: bytes) -> tuple[Probe, int]:
@@ -103,8 +107,8 @@ def probe_and_quantity_from_bytes(buffer: bytes) -> tuple[Probe, int]:
 def probe_and_quantity_from_bytes_switch(buffer: bytes) -> tuple[Probe, int]:
     int_ = partial(int.from_bytes, byteorder="little")
     raw = int_(buffer[0:4])
-    probe_type = raw & 0xfff
-    quantity = (raw >> 19) & 0xfff
+    probe_type = raw & 0xFFF
+    quantity = (raw >> 19) & 0xFFF
     return Probe.from_id(probe_type), quantity
 
 
@@ -128,8 +132,8 @@ _probe_types = {
     19: Probe(19, "Research Probe G6", "R6", 17),
     22: Probe(22, "Booster Probe G1", "B1", 18),
     23: Probe(23, "Booster Probe G2", "B2", 19),
-    26: Probe(26, "Storage Probe", "S", 20),
-    29: Probe(29, "Duplicator Probe", "D", 21),
+    26: Probe(26, "Storage Probe", "S", 21),
+    29: Probe(29, "Duplicator Probe", "D", 20),
     30: Probe(30, "Fuel Recovery Probe", "FR", 22),
     31: Probe(31, "Melee Attack Probe", "MA", 22),
     32: Probe(32, "Ranged Attack Probe", "RA", 22),
@@ -260,8 +264,8 @@ sightseeing_spots = [
     (34, 0x4, 0x20),
     (81, 0x8, 0x100000),
     (74, 0x8, 0x2000),
-    (118, 0xc, 0x2000000),
-    (112, 0xc, 0x80000),
+    (118, 0xC, 0x2000000),
+    (112, 0xC, 0x80000),
     (153, 0x10, 0x10000000),
     (147, 0x10, 0x400000),
     (133, 0x10, 0x100),
@@ -273,10 +277,10 @@ sightseeing_spots = [
     (201, 0x18, 0x200),
     (205, 0x18, 0x2000),
     (206, 0x18, 0x4000),
-    (241, 0x1c, 0x20000),
-    (233, 0x1c, 0x200),
-    (235, 0x1c, 0x800),
-    (229, 0x1c, 0x20),
+    (241, 0x1C, 0x20000),
+    (233, 0x1C, 0x200),
+    (235, 0x1C, 0x800),
+    (229, 0x1C, 0x20),
     (276, 0x20, 0x100000),
     (312, 0x24, 0x1000000),
     (313, 0x24, 0x2000000),
@@ -290,10 +294,10 @@ sightseeing_spots = [
     (336, 0x28, 0x10000),
     (339, 0x28, 0x80000),
     (341, 0x28, 0x200000),
-    (360, 0x2c, 0x100),
-    (364, 0x2c, 0x1000),
-    (356, 0x2c, 0x10),
-    (358, 0x2c, 0x40),
+    (360, 0x2C, 0x100),
+    (364, 0x2C, 0x1000),
+    (356, 0x2C, 0x10),
+    (358, 0x2C, 0x40),
     (167, 0x38, 0x1),
     (168, 0x38, 0x2),
 ]

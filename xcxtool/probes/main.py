@@ -79,12 +79,21 @@ class FrontierNavTool(XCXToolApplication):
         savedata = self.get_save_data(target)
         if savedata is None:
             return 2
-        self.inventory = get_probe_inventory(savedata[slices["probe_inventory"]], self.parent.edition)
+        self.inventory = get_probe_inventory(
+            savedata[slices["probe_inventory"]], self.parent.edition
+        )
         self.sites = get_installed_probes(savedata[slices["fnav_layout"]])
         # noinspection PyTypeChecker
         self.spots = get_sightseeing_spots(savedata[slices["locations"]], byteorder)
 
-        if not any((self.include_inventory, self.include_sites, self.include_layout, self.frontiernav)):
+        if not any(
+            (
+                self.include_inventory,
+                self.include_sites,
+                self.include_layout,
+                self.frontiernav,
+            )
+        ):
             self.include_inventory = True
             self.include_sites = True
 
@@ -179,12 +188,18 @@ class FrontierNavTool(XCXToolApplication):
         try:
             return cli.ExistingDirectory(config_setting)
         except ValueError:
-            self.warning("Configured output_dir does not exist, writing to current directory")
+            self.warning(
+                "Configured output_dir does not exist, writing to current directory"
+            )
             return local.path(".")
 
     def format_frontiernav_url(self) -> str:
         base_url = "https://frontiernav.net/wiki/xenoblade-chronicles-x/visualisations/maps/probe-guides/My%20Current%20Layout?map="
-        probe_layout = [f"{site.xenoprobes_name}-{probe.frontiernav_type}" for site, probe in self.sites.items()]
+        probe_layout = [
+            f"{site.xenoprobes_name}-{probe.frontiernav_type}"
+            for site, probe in self.sites.items()
+            if site.xenoprobes_name != "skip"
+        ]
         return base_url + "~".join(probe_layout)
 
     def do_frontiernav(self) -> None:
@@ -241,7 +256,9 @@ def get_save_data_from_backup_folder() -> bytes:
     return get_save_data_from_file(save_file)
 
 
-def get_probe_inventory(probe_inventory_buffer: bytes, edition: str) -> Counter[data.Probe]:
+def get_probe_inventory(
+    probe_inventory_buffer: bytes, edition: str
+) -> Counter[data.Probe]:
     """Returns a Counter object representing the probe inventory."""
     if len(probe_inventory_buffer) != 1200:
         raise ValueError(
@@ -279,10 +296,15 @@ def get_installed_probes(probe_sites_buffer: bytes) -> dict[data.ProbeSite, data
     return sites
 
 
-def get_sightseeing_spots(locations_buffer: bytes, byteorder: Literal["little", "big"] = "big") -> set[int]:
+def get_sightseeing_spots(
+    locations_buffer: bytes, byteorder: Literal["little", "big"] = "big"
+) -> set[int]:
     """Get a set of location IDs for found sightseeing spots."""
     spots = set()
-    location_bits = {i: int.from_bytes(locations_buffer[i:i+4], byteorder) for i in range(0, 68, 4)}
+    location_bits = {
+        i: int.from_bytes(locations_buffer[i : i + 4], byteorder)
+        for i in range(0, 68, 4)
+    }
     for location_id, offset, bit in data.sightseeing_spots:
         if location_bits[offset] & bit:
             spots.add(location_id)
